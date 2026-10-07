@@ -37,17 +37,16 @@ def scrape_page(url):
 def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
     """
     Split content into chunks
-    Find the most relevant chunk for the question
-    Return top 3 chunks combined
+    Find most relevant chunks for the question
+    Always include neighbouring chunks for full context
     """
-    # Get question keywords
     words = [
         w for w in re.findall(r"[a-z0-9]+", question.lower())
         if w not in STOP_WORDS and len(w) > 2
     ]
 
     if not words or not content:
-        return content[:15000]
+        return content[:20000]
 
     # Split into overlapping chunks
     chunks = []
@@ -56,43 +55,56 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         end = start + chunk_size
         chunks.append({
             "text":  content[start:end],
-            "start": start
+            "start": start,
+            "index": len(chunks)
         })
         start += chunk_size - overlap
+
+    if not chunks:
+        return content[:20000]
 
     # Score each chunk
     scored = []
     for chunk in chunks:
         text  = chunk["text"].lower()
         score = sum(
-            (1 + text.count(w)) * (2 if w in text else 0)
+            text.count(w) * (2 if w in text else 0)
             for w in words
         )
         scored.append((score, chunk))
 
-    # Sort by score
     scored.sort(key=lambda x: x[0], reverse=True)
 
-    # Take top 3 chunks
-    top_chunks = [c for s, c in scored[:4] if s > 0]
+    # Get best matching chunk index
+    best_chunk = scored[0][1]
+    best_index = best_chunk["index"]
 
-    if not top_chunks:
-        return content[:15000]
+    # Always include best chunk + one before + one after
+    # This ensures we never split related content
+    selected_indices = set()
+    selected_indices.add(best_index)
 
-    # Always add chunk immediately after best match
-    # This captures definitions that follow the main rule
-    best_start = scored[0][1]["start"]
-    for chunk in chunks:
-        if chunk["start"] == best_start + chunk_size - overlap:
-            if chunk not in top_chunks:
-                top_chunks.append(chunk)
-            break
+    # Add chunk before best
+    if best_index > 0:
+        selected_indices.add(best_index - 1)
 
-    # Sort by position so text flows naturally
-    top_chunks.sort(key=lambda x: x["start"])
+    # Add chunk after best
+    if best_index < len(chunks) - 1:
+        selected_indices.add(best_index + 1)
 
-    return "\n\n".join(c["text"] for c in top_chunks)
+    # Add second best if different area
+    if len(scored) > 1:
+        second_best = scored[1][1]
+        if abs(second_best["index"] - best_index) > 1:
+            selected_indices.add(second_best["index"])
 
+    # Get selected chunks sorted by position
+    selected = sorted(
+        [chunks[i] for i in selected_indices],
+        key=lambda x: x["start"]
+    )
+
+    return "\n\n".join(c["text"] for c in selected)
 # ── Find Relevant Regulations ────────────────────────────────
 STOP_WORDS = set(
     "a an the of to in on for and or is are what who how "
