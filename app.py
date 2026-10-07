@@ -21,17 +21,68 @@ def load_database():
 
 # ── Scrape One Regulation Page ───────────────────────────────
 def scrape_page(url):
+    """Scrape full content from URL"""
     try:
         headers  = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         response = requests.get(url, headers=headers, timeout=15)
         soup     = BeautifulSoup(response.text, "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "header"]):
             tag.decompose()
-        text  = soup.get_text(separator="\n", strip=True)
-        lines = [l for l in text.splitlines() if len(l) > 20]
-        return "\n".join(lines)
+        text = soup.get_text(separator="\n", strip=True)
+        return text
     except:
         return ""
+
+
+def find_relevant_chunk(content, question, chunk_size=5000, overlap=500):
+    """
+    Split content into chunks
+    Find the most relevant chunk for the question
+    Return top 3 chunks combined
+    """
+    # Get question keywords
+    words = [
+        w for w in re.findall(r"[a-z0-9]+", question.lower())
+        if w not in STOP_WORDS and len(w) > 2
+    ]
+
+    if not words or not content:
+        return content[:15000]
+
+    # Split into overlapping chunks
+    chunks = []
+    start  = 0
+    while start < len(content):
+        end = start + chunk_size
+        chunks.append({
+            "text":  content[start:end],
+            "start": start
+        })
+        start += chunk_size - overlap
+
+    # Score each chunk
+    scored = []
+    for chunk in chunks:
+        text  = chunk["text"].lower()
+        score = sum(
+            (1 + text.count(w)) * (2 if w in text else 0)
+            for w in words
+        )
+        scored.append((score, chunk))
+
+    # Sort by score
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    # Take top 3 chunks
+    top_chunks = [c for s, c in scored[:3] if s > 0]
+
+    if not top_chunks:
+        return content[:15000]
+
+    # Sort by position so text flows naturally
+    top_chunks.sort(key=lambda x: x["start"])
+
+    return "\n\n".join(c["text"] for c in top_chunks)
 
 # ── Find Relevant Regulations ────────────────────────────────
 STOP_WORDS = set(
@@ -216,14 +267,11 @@ def main():
             with st.spinner(f"📡 Loading: {reg['title'][:50]}..."):
                 content = scrape_page(reg["url"])
                 if content:
-                    # Take content from beginning AND middle
-                    # to capture regulations that start late
-                    chunk1 = content[:10000]
-                    chunk2 = content[10000:20000] if len(content) > 10000 else ""
-                    chunk3 = content[20000:30000] if len(content) > 20000 else ""
-                    full   = chunk1 + chunk2 + chunk3
+                    relevant_chunk = find_relevant_chunk(
+                        content, question
+                    )
                     context_parts.append(
-                        f"[SOURCE: {reg['title']}]\n{full}"
+                        f"[SOURCE: {reg['title']}]\n{relevant_chunk}"
                     )
             progress.progress((i + 1) / len(relevant))
 
