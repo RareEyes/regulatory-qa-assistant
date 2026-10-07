@@ -216,9 +216,14 @@ def main():
             with st.spinner(f"📡 Loading: {reg['title'][:50]}..."):
                 content = scrape_page(reg["url"])
                 if content:
-                    # Take more content per regulation
+                    # Take content from beginning AND middle
+                    # to capture regulations that start late
+                    chunk1 = content[:10000]
+                    chunk2 = content[10000:20000] if len(content) > 10000 else ""
+                    chunk3 = content[20000:30000] if len(content) > 20000 else ""
+                    full   = chunk1 + chunk2 + chunk3
                     context_parts.append(
-                        f"[SOURCE: {reg['title']}]\n{content[:8000]}"
+                        f"[SOURCE: {reg['title']}]\n{full}"
                     )
             progress.progress((i + 1) / len(relevant))
 
