@@ -34,7 +34,7 @@ def scrape_page(url):
         return ""
 
 
-def find_relevant_chunk(content, question, chunk_size=5000, overlap=500):
+def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
     """
     Split content into chunks
     Find the most relevant chunk for the question
@@ -74,10 +74,19 @@ def find_relevant_chunk(content, question, chunk_size=5000, overlap=500):
     scored.sort(key=lambda x: x[0], reverse=True)
 
     # Take top 3 chunks
-    top_chunks = [c for s, c in scored[:3] if s > 0]
+    top_chunks = [c for s, c in scored[:4] if s > 0]
 
     if not top_chunks:
         return content[:15000]
+
+    # Always add chunk immediately after best match
+    # This captures definitions that follow the main rule
+    best_start = scored[0][1]["start"]
+    for chunk in chunks:
+        if chunk["start"] == best_start + chunk_size - overlap:
+            if chunk not in top_chunks:
+                top_chunks.append(chunk)
+            break
 
     # Sort by position so text flows naturally
     top_chunks.sort(key=lambda x: x["start"])
