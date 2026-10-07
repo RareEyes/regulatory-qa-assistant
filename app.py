@@ -126,7 +126,10 @@ STRICT RULES:
 - Do NOT invent or guess anything.
 - Start with one direct answer sentence.
 - Then extract EVERY detail as separate bullet points.
-- Copy exact definitions, timeframes and obligations word for word.
+- Copy every quoted definition word for word e.g. "without delay" means...
+- Include every timeframe, amount and obligation exactly as stated.
+- Never skip any bullet point or sub point from the source text.
+- For obligation questions end with: "Check the full rule for exceptions."
 - End with Sources listing regulation names used.
 
 REGULATION TEXT:
