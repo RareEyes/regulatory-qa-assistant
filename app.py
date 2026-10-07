@@ -3,9 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 from google import genai
 import json
-import time
 import re
-import math
 
 # ── Page Config ──────────────────────────────────────────────
 st.set_page_config(
@@ -61,8 +59,10 @@ def find_relevant_urls(question, regulations, top=5):
         s = score_regulation(question, reg["title"], reg["url"])
         scored.append((s, reg))
     scored.sort(key=lambda x: x[0], reverse=True)
-    # Return top scoring, minimum score of 1
-    return [reg for s, reg in scored[:top] if s > 0] or [scored[0][1]]
+    top_regs = [reg for s, reg in scored[:top] if s > 0]
+    if not top_regs:
+        top_regs = [scored[0][1]]
+    return top_regs
 
 # ── Ask Gemini ───────────────────────────────────────────────
 def ask_gemini(question, context, api_key):
@@ -108,47 +108,51 @@ ANSWER:"""
 
 # ── Main App ─────────────────────────────────────────────────
 def main():
-    # Header
+
+    # ── Hide Streamlit Default UI ────────────────────────────
+    st.markdown("""
+        <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        [data-testid="stSidebar"] {display: none;}
+        </style>
+    """, unsafe_allow_html=True)
+
+    # ── Header ───────────────────────────────────────────────
     st.title("🏦 Regulatory Q&A Assistant")
-    st.caption("Ask questions about financial regulations across different countries")
+    st.caption("Ask questions about financial regulations")
     st.divider()
 
-    # Load database
+    # ── Load Database ────────────────────────────────────────
     try:
         db = load_database()
     except:
         st.error("Failed to load regulations database.")
         return
 
-    # ── Step 1: API Key ──────────────────────────────────────
-    with st.sidebar:
-        st.header("⚙️ Settings")
-        api_key = st.text_input(
-            "Gemini API Key",
-            type="password",
-            placeholder="Enter your Gemini API key",
-            help="Get free key at aistudio.google.com"
-        )
-        st.caption("Your key is never stored")
-        st.divider()
-        st.markdown("**How to use:**")
-        st.markdown("1. Enter your Gemini API key")
-        st.markdown("2. Select a country")
-        st.markdown("3. Select a field")
-        st.markdown("4. Ask your question")
-        st.divider()
-        st.caption("Data sourced from official regulatory websites")
+    # ── API Key ──────────────────────────────────────────────
+    api_key = st.text_input(
+        "🔑 Gemini API Key",
+        type="password",
+        placeholder="Enter your free Gemini API key from aistudio.google.com",
+    )
 
     if not api_key:
-        st.info("👈 Please enter your Gemini API key in the sidebar to get started")
+        st.info("👆 Enter your free Gemini API key to get started")
+        st.markdown(
+            "Get free key at [aistudio.google.com](https://aistudio.google.com)"
+        )
         return
 
-    # ── Step 2: Select Country ───────────────────────────────
-    st.subheader("Step 1: Select Country")
+    st.divider()
+
+    # ── Step 1: Country ──────────────────────────────────────
+    st.subheader("① Select Country")
     countries     = list(db.keys())
     country_names = [db[c]["name"] for c in countries]
     selected_idx  = st.selectbox(
-        "Choose a country/regulator",
+        "Country",
         range(len(countries)),
         format_func=lambda x: country_names[x],
         label_visibility="collapsed"
@@ -158,47 +162,53 @@ def main():
 
     st.divider()
 
-    # ── Step 3: Select Field ─────────────────────────────────
-    st.subheader("Step 2: Select Field")
+    # ── Step 2: Field ────────────────────────────────────────
+    st.subheader("② Select Field")
     fields        = list(country_data["fields"].keys())
     field_options = fields + ["All"]
-    
-    cols          = st.columns(len(field_options))
-    selected_field = st.session_state.get("selected_field", field_options[0])
 
+    # Use buttons for field selection
+    if "selected_field" not in st.session_state:
+        st.session_state["selected_field"] = field_options[0]
+
+    cols = st.columns(len(field_options))
     for i, field in enumerate(field_options):
         with cols[i]:
+            is_selected = st.session_state["selected_field"] == field
             if st.button(
                 field,
-                key=f"field_{field}",
+                key=f"btn_{field}",
                 use_container_width=True,
-                type="primary" if selected_field == field else "secondary"
+                type="primary" if is_selected else "secondary"
             ):
                 st.session_state["selected_field"] = field
-                selected_field = field
+                st.rerun()
+
+    selected_field = st.session_state["selected_field"]
+    st.caption(f"Selected: **{selected_field}**")
 
     st.divider()
 
-    # ── Step 4: Ask Question ─────────────────────────────────
-    st.subheader("Step 3: Ask Your Question")
-    question = st.text_area(
+    # ── Step 3: Question ─────────────────────────────────────
+    st.subheader("③ Ask Your Question")
+
+    question = st.text_input(
         "Question",
         placeholder="e.g. What are the KYC requirements for high risk customers?",
-        height=100,
         label_visibility="collapsed"
     )
 
     ask_clicked = st.button(
-        "🔍 Ask Question",
+        "🔍 Get Answer",
         type="primary",
         use_container_width=True,
         disabled=not question
     )
 
-    # ── Answer ───────────────────────────────────────────────
+    # ── Process & Answer ─────────────────────────────────────
     if ask_clicked and question:
 
-        # Get regulations for selected field
+        # Get regulations for field
         if selected_field == "All":
             regulations = []
             for field_regs in country_data["fields"].values():
@@ -206,20 +216,25 @@ def main():
         else:
             regulations = country_data["fields"].get(selected_field, [])
 
+        # Find relevant
         with st.spinner("🔍 Finding relevant regulations..."):
-            relevant = find_relevant_urls(question, regulations, top=3)
-
-        st.info(f"📚 Searching {len(relevant)} relevant regulation(s)")
+            relevant = find_relevant_urls(question, regulations, top=5)
 
         # Scrape content
         context_parts = []
-        with st.spinner("📡 Loading regulation content..."):
-            for reg in relevant:
+        progress      = st.progress(0)
+
+        for i, reg in enumerate(relevant):
+            with st.spinner(f"📡 Loading: {reg['title'][:50]}..."):
                 content = scrape_page(reg["url"])
                 if content:
+                    # Take more content per regulation
                     context_parts.append(
-                        f"[{reg['title']}]\n{content[:5000]}"
+                        f"[SOURCE: {reg['title']}]\n{content[:8000]}"
                     )
+            progress.progress((i + 1) / len(relevant))
+
+        progress.empty()
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
@@ -228,7 +243,7 @@ def main():
         context = "\n\n".join(context_parts)
 
         # Get answer
-        with st.spinner("🤖 Generating answer..."):
+        with st.spinner("🤖 Analysing regulations..."):
             answer = ask_gemini(question, context, api_key)
 
         # Show answer
