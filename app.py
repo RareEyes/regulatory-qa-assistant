@@ -122,7 +122,6 @@ def main():
     # ── Header ───────────────────────────────────────────────
     st.title("🏦 Regulatory Q&A Assistant")
     st.caption("Ask questions about financial regulations")
-    st.divider()
 
     # ── Load Database ────────────────────────────────────────
     try:
