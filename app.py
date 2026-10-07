@@ -339,3 +339,4 @@ def main():
         st.markdown(answer)
 
 if __name__ == "__main__":
+    main()
