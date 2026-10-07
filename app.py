@@ -213,12 +213,34 @@ def main():
         footer {visibility: hidden;}
         header {visibility: hidden;}
         [data-testid="stSidebar"] {display: none;}
+        
+        /* Remove top padding */
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+        }
+        
+        /* Make title smaller */
+        h1 {
+            font-size: 1.8rem !important;
+            margin-bottom: 0rem !important;
+        }
+        
+        /* Reduce spacing between elements */
+        .stSelectbox {
+            margin-bottom: 0rem !important;
+        }
+        
+        /* Reduce button spacing */
+        .stButton {
+            margin-bottom: 0rem !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
     # ── Header ───────────────────────────────────────────────
     st.title("🏦 Regulatory Q&A Assistant")
-    st.caption("Ask questions about financial regulations")
+    st.caption("Ask questions about financial regulations across different countries")
 
     # ── Load Database ────────────────────────────────────────
     try:
@@ -230,53 +252,40 @@ def main():
     # ── API Key ──────────────────────────────────────────────
     api_key = st.secrets["GEMINI_API_KEY"]
 
-    st.divider()
+    # ── All Steps In Columns ─────────────────────────────────
+    col1, col2 = st.columns(2)
 
-    # ── Step 1: Country ──────────────────────────────────────
-    st.subheader("① Select Country")
-    countries     = list(db.keys())
-    country_names = [db[c]["name"] for c in countries]
-    selected_idx  = st.selectbox(
-        "Country",
-        range(len(countries)),
-        format_func=lambda x: country_names[x],
-        label_visibility="collapsed"
-    )
-    selected_country = countries[selected_idx]
-    country_data     = db[selected_country]
+    with col1:
+        st.markdown("**① Country**")
+        countries     = list(db.keys())
+        country_names = [db[c]["name"] for c in countries]
+        selected_idx  = st.selectbox(
+            "Country",
+            range(len(countries)),
+            format_func=lambda x: country_names[x],
+            label_visibility="collapsed"
+        )
+        selected_country = countries[selected_idx]
+        country_data     = db[selected_country]
 
-    st.divider()
+    with col2:
+        st.markdown("**② Field**")
+        fields        = list(country_data["fields"].keys())
+        field_options = fields + ["All"]
 
-    # ── Step 2: Field ────────────────────────────────────────
-    st.subheader("② Select Field")
-    fields        = list(country_data["fields"].keys())
-    field_options = fields + ["All"]
+        if "selected_field" not in st.session_state:
+            st.session_state["selected_field"] = field_options[0]
 
-    # Use buttons for field selection
-    if "selected_field" not in st.session_state:
-        st.session_state["selected_field"] = field_options[0]
+        selected_field = st.selectbox(
+            "Field",
+            field_options,
+            label_visibility="collapsed",
+            key="field_select"
+        )
+        st.session_state["selected_field"] = selected_field
 
-    cols = st.columns(len(field_options))
-    for i, field in enumerate(field_options):
-        with cols[i]:
-            is_selected = st.session_state["selected_field"] == field
-            if st.button(
-                field,
-                key=f"btn_{field}",
-                use_container_width=True,
-                type="primary" if is_selected else "secondary"
-            ):
-                st.session_state["selected_field"] = field
-                st.rerun()
-
-    selected_field = st.session_state["selected_field"]
-    st.caption(f"Selected: **{selected_field}**")
-
-    st.divider()
-
-    # ── Step 3: Question ─────────────────────────────────────
-    st.subheader("③ Ask Your Question")
-
+    # ── Question ─────────────────────────────────────────────
+    st.markdown("**③ Your Question**")
     question = st.text_input(
         "Question",
         placeholder="e.g. What are the KYC requirements for high risk customers?",
@@ -293,24 +302,20 @@ def main():
     # ── Process & Answer ─────────────────────────────────────
     if ask_clicked and question:
 
-        # Get regulations for field
         if selected_field == "All":
             regulations = []
             for field_regs in country_data["fields"].values():
                 regulations.extend(field_regs)
         else:
-            regulations = country_data["fields"].get(selected_field, [])
+            regulations = country_data["fields"].get(
+                selected_field, []
+            )
 
-        # Find relevant
-        with st.spinner("🔍 Finding relevant regulations..."):
-            relevant = find_relevant_urls(question, regulations, top=5)
-
-        # Scrape content
+        relevant      = find_relevant_urls(question, regulations, top=5)
         context_parts = []
-        progress      = st.progress(0)
 
-        for i, reg in enumerate(relevant):
-            with st.spinner(f"📡 Loading: {reg['title'][:50]}..."):
+        with st.spinner("🔍 Searching regulations..."):
+            for reg in relevant:
                 content = scrape_page(reg["url"])
                 if content:
                     relevant_chunk = find_relevant_chunk(
@@ -319,24 +324,18 @@ def main():
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{relevant_chunk}"
                     )
-            progress.progress((i + 1) / len(relevant))
-
-        progress.empty()
 
         if not context_parts:
-            st.error("Could not load regulation content. Please try again.")
+            st.error("Could not load content. Please try again.")
             return
 
         context = "\n\n".join(context_parts)
 
-        # Get answer
-        with st.spinner("🤖 Analysing regulations..."):
+        with st.spinner("🤖 Analysing..."):
             answer = ask_gemini(question, context, api_key)
 
-        # Show answer
-        st.divider()
-        st.subheader("📋 Answer")
+        st.markdown("---")
+        st.markdown("**📋 Answer**")
         st.markdown(answer)
 
 if __name__ == "__main__":
-    main()
