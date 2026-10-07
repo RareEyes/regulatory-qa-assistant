@@ -37,9 +37,10 @@ def scrape_page(url):
 def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
     """
     Split content into chunks
-    Find most relevant chunks for the question
-    Always include neighbouring chunks for full context
+    Find most relevant chunk using both
+    question keywords AND answer keywords
     """
+    # Question keywords
     words = [
         w for w in re.findall(r"[a-z0-9]+", question.lower())
         if w not in STOP_WORDS and len(w) > 2
@@ -52,9 +53,8 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
     chunks = []
     start  = 0
     while start < len(content):
-        end = start + chunk_size
         chunks.append({
-            "text":  content[start:end],
+            "text":  content[start:start + chunk_size],
             "start": start,
             "index": len(chunks)
         })
@@ -64,41 +64,63 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         return content[:20000]
 
     # Score each chunk
+    # Key insight: exact phrase matches score much higher
     scored = []
     for chunk in chunks:
         text  = chunk["text"].lower()
-        score = sum(
-            text.count(w) * (2 if w in text else 0)
-            for w in words
-        )
+        score = 0
+
+        # Base score from question keywords
+        for w in words:
+            score += text.count(w)
+
+        # Big boost for chunks with specific answer terms
+        answer_terms = [
+            "means that you must",
+            "means within",
+            "immediately freeze",
+            "freeze all funds",
+            "without delay",
+            "without prior notice",
+            "confirmed match",
+            "must immediately",
+            "you must",
+            "obligation",
+            "required to",
+            "shall",
+        ]
+        for term in answer_terms:
+            if term in text:
+                score += 20
+
         scored.append((score, chunk))
 
     scored.sort(key=lambda x: x[0], reverse=True)
 
-    # Get best matching chunk index
+    # Get best chunk index
     best_chunk = scored[0][1]
     best_index = best_chunk["index"]
 
-    # Always include best chunk + one before + one after
-    # This ensures we never split related content
+    # Always include best + neighbours
     selected_indices = set()
     selected_indices.add(best_index)
-
-    # Add chunk before best
     if best_index > 0:
         selected_indices.add(best_index - 1)
-
-    # Add chunk after best
     if best_index < len(chunks) - 1:
         selected_indices.add(best_index + 1)
 
-    # Add second best if different area
+    # Add second best if far from best
     if len(scored) > 1:
-        second_best = scored[1][1]
-        if abs(second_best["index"] - best_index) > 1:
-            selected_indices.add(second_best["index"])
+        second       = scored[1][1]
+        second_index = second["index"]
+        if abs(second_index - best_index) > 1:
+            selected_indices.add(second_index)
+            if second_index > 0:
+                selected_indices.add(second_index - 1)
+            if second_index < len(chunks) - 1:
+                selected_indices.add(second_index + 1)
 
-    # Get selected chunks sorted by position
+    # Sort by position
     selected = sorted(
         [chunks[i] for i in selected_indices],
         key=lambda x: x["start"]
