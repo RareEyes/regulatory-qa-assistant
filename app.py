@@ -132,18 +132,7 @@ def main():
         return
 
     # ── API Key ──────────────────────────────────────────────
-    api_key = st.text_input(
-        "🔑 Gemini API Key",
-        type="password",
-        placeholder="Enter your free Gemini API key from aistudio.google.com",
-    )
-
-    if not api_key:
-        st.info("👆 Enter your free Gemini API key to get started")
-        st.markdown(
-            "Get free key at [aistudio.google.com](https://aistudio.google.com)"
-        )
-        return
+    api_key = st.secrets["GEMINI_API_KEY"]
 
     st.divider()
 
