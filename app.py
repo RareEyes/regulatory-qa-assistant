@@ -319,7 +319,7 @@ def main():
         st.session_state["selected_field"]   = field_options[0]
         st.session_state["selected_country"] = selected_country
 
-    st.write("Select Field")
+    st.caption("Select Field")
     cols = st.columns(len(field_options))
     for i, field in enumerate(field_options):
         with cols[i]:
