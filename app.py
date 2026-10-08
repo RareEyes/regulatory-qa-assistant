@@ -23,7 +23,7 @@ st.markdown("""
     h1 {text-align: center; font-size: 1.8rem !important;}
     .subtitle {text-align: center; color: grey; font-size: 0.9rem; margin-bottom: 1rem;}
     .disclaimer {font-size: 0.60rem; color: grey; margin-top: 0.5rem;}
-    .hint {font-size: 0.62rem; color: #bbb; margin-top: -0.5rem; margin-bottom: 0.5rem;}
+    .hint {font-size: 0.50rem; color: #bbb; margin-top: -0.5rem; margin-bottom: 0.5rem;}
     </style>
 """, unsafe_allow_html=True)
 
