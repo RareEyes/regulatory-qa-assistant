@@ -72,6 +72,10 @@ def score_regulation(question, title, url):
     return sum(1 for w in words if w in text)
 
 def find_relevant_urls(question, regulations, top=5):
+    # If small collection (5 or fewer) search all of them
+    if len(regulations) <= 5:
+        return regulations
+
     scored = sorted(
         [(score_regulation(question, r["title"], r["url"]), r)
          for r in regulations],
