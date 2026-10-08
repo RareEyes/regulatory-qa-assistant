@@ -89,22 +89,32 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         return content[:20000]
 
     answer_terms = [
+        # General
         "means that you must", "means within", "immediately",
         "must not", "shall not", "required to", "obligation",
         "you must", "shall", "within", "days", "hours",
-        "prohibited", "penalty", "high risk", "enhanced due diligence",
+        "prohibited", "penalty",
+        # UAE specific
+        "freeze", "confirmed match", "without delay",
+        "without prior notice", "freeze all funds",
+        # RBI/KYC specific
+        "high risk", "enhanced due diligence",
         "customer due diligence", "beneficial owner",
         "intensified monitoring", "periodic updation",
         "risk-based", "two years", "eight years", "ten years",
-        "freeze", "confirmed match", "without delay",
-        "without prior notice", "freeze all funds",
+        "low risk", "medium risk", "high-risk customers",
+        "risk categorisation", "customer identification",
+        "due diligence measures", "simplified due diligence",
+        "ongoing due diligence", "risk profile",
+        "updation of kyc", "kyc updation",
+        "closely monitored", "mlm", "multi-level",
     ]
 
     scored = []
     for chunk in chunks:
         text         = chunk["text"].lower()
-        phrase_score = sum(text.count(t) * 15 for t in answer_terms if t in text)
-        word_score   = sum(min(text.count(w), 5) * 2 for w in words)
+        phrase_score = sum(text.count(t) * 30 for t in answer_terms if t in text)
+        word_score   = sum(min(text.count(w), 3) * 1 for w in words)
         scored.append((phrase_score + word_score, chunk))
 
     scored.sort(key=lambda x: x[0], reverse=True)
