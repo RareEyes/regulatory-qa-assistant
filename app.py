@@ -86,7 +86,7 @@ def find_relevant_urls(question, regulations, top=5):
     top_regs = [r for s, r in scored[:top] if s > 0]
     return top_regs if top_regs else [scored[0][1]]
 
-def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
+def find_relevant_chunk(content, question, chunk_size=8000, overlap=7000):
     words = [
         w for w in re.findall(r"[a-z0-9]+", question.lower())
         if w not in STOP_WORDS and len(w) > 2
