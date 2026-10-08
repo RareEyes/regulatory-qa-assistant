@@ -233,11 +233,11 @@ QUESTION: {question}
 ANSWER:"""
 
     models = [
+        "gemini-flash-lite-latest",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
         "gemini-1.5-flash",
         "gemini-1.5-flash-8b",
-        "gemini-flash-lite-latest",
     ]
 
     for model in models:
