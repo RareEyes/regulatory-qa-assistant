@@ -346,7 +346,12 @@ def main():
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
                     )
-
+# DEBUG - remove after testing
+        total = sum(len(c) for c in context_parts)
+        st.write(f"Debug: {len(context_parts)} sources, {total} total chars")
+        for i, c in enumerate(context_parts):
+            st.write(f"  Source {i+1}: {len(c)} chars, has_governance={'governance' in c.lower()}")
+            
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
             return
