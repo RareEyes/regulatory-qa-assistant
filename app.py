@@ -265,9 +265,9 @@ def main():
     api_key = st.secrets["GEMINI_API_KEY"]
 
     # Header - centered
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
-        st.markdown("### 🏦 Regulatory Q&A Assistant")
+        st.markdown("#### 🏦 Regulatory Q&A Assistant")
         st.markdown('<p class="subtitle">Ask questions about financial regulations</p>', unsafe_allow_html=True)
 
     # ── Country ───────────────────────────────────────────────────────────────
