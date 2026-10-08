@@ -202,7 +202,7 @@ def main():
     # Header
     st.title("🏦 Regulatory Q&A Assistant")
     st.caption("Ask questions about financial regulations")
-    st.divider()
+    st.markdown("---")
 
     # Load database
     try:
@@ -227,7 +227,7 @@ def main():
     selected_country = countries[selected_idx]
     country_data     = db[selected_country]
 
-    st.divider()
+    st.markdown("---")
 
     # ── Step 2: Field ─────────────────────────────────────────────────────────
     st.subheader("② Select Field")
@@ -260,7 +260,7 @@ def main():
 
     selected_field = st.session_state["selected_field"]
 
-    st.divider()
+    st.markdown("---")
 
     # ── Step 3: Question ──────────────────────────────────────────────────────
     st.subheader("③ Ask Your Question")
@@ -312,7 +312,7 @@ def main():
         with st.spinner("🤖 Analysing..."):
             answer = ask_gemini(question, context, api_key)
 
-        st.divider()
+        st.markdown("---")
         st.subheader("📋 Answer")
         st.markdown(answer)
 
