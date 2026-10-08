@@ -334,15 +334,24 @@ def main():
         relevant = find_relevant_urls(question, regulations, top=5)
 
         context_parts = []
+        MAX_TOTAL_CHARS = 40000
+
         with st.spinner("🔍 Searching regulations..."):
+            total_chars = 0
             for reg in relevant:
+                if total_chars >= MAX_TOTAL_CHARS:
+                    break
+
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
                 else:
                     content = scrape_page(reg["url"])
 
                 if content:
-                    chunk = find_relevant_chunk(content, question)
+                    chunk     = find_relevant_chunk(content, question)
+                    # Cap each source at 15,000 chars
+                    chunk     = chunk[:15000]
+                    total_chars += len(chunk)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
                     )
