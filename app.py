@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 from google import genai
 import json
 import re
+import io
+from pypdf import PdfReader
 
 st.set_page_config(
     page_title="Regulatory Q&A Assistant",
@@ -11,7 +13,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# ── Hide UI clutter ───────────────────────────────────────────────────────────
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -40,21 +41,14 @@ def scrape_page(url):
         return ""
 
 def read_pdf_from_url(url):
-    """Download and read PDF from GitHub"""
     try:
-        import io
-        from pypdf import PdfReader
-
         response = requests.get(url, timeout=30)
-        pdf_file = io.BytesIO(response.content)
-        reader   = PdfReader(pdf_file)
-
-        text = ""
+        reader   = PdfReader(io.BytesIO(response.content))
+        text     = ""
         for page in reader.pages:
             page_text = page.extract_text() or ""
             if page_text.strip():
                 text += page_text + "\n"
-
         return text
     except:
         return ""
@@ -86,7 +80,10 @@ def find_relevant_urls(question, regulations, top=5):
     top_regs = [r for s, r in scored[:top] if s > 0]
     return top_regs if top_regs else [scored[0][1]]
 
-def find_relevant_chunk(content, question, chunk_size=8000, overlap=7000):
+def find_relevant_chunk(content, question):
+    chunk_size = 8000
+    step       = 7000
+
     words = [
         w for w in re.findall(r"[a-z0-9]+", question.lower())
         if w not in STOP_WORDS and len(w) > 2
@@ -103,51 +100,39 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=7000):
             "start": start,
             "index": len(chunks)
         })
-        start += chunk_size - overlap
+        start += step
 
     if not chunks:
         return content[:20000]
 
     answer_terms = [
-        # General
         "means that you must", "means within", "immediately",
         "must not", "shall not", "required to", "obligation",
         "you must", "shall", "within", "days", "hours",
-        "prohibited", "penalty",
-        # UAE specific
-        "freeze", "confirmed match", "without delay",
-        "without prior notice", "freeze all funds",
-        # RBI/KYC specific
-        "high risk", "enhanced due diligence",
+        "prohibited", "high risk", "enhanced due diligence",
         "customer due diligence", "beneficial owner",
         "intensified monitoring", "periodic updation",
         "risk-based", "two years", "eight years", "ten years",
+        "freeze", "confirmed match", "without delay",
+        "without prior notice", "freeze all funds",
         "low risk", "medium risk", "high-risk customers",
-        "risk categorisation", "customer identification",
-        "due diligence measures", "simplified due diligence",
-        "ongoing due diligence", "risk profile",
-        "updation of kyc", "kyc updation",
-        "closely monitored", "mlm", "multi-level",
+        "prosecution", "criminal sanction", "prison term",
+        "fine", "enforcement", "censure",
+        "failure to comply", "fails to comply",
+        "civil penalty", "criminal offence", "imprisonment",
+        "penalty", "sanction",
     ]
 
     scored = []
     for chunk in chunks:
-        text         = chunk["text"].lower()
-        phrase_score = sum(text.count(t) * 30 for t in answer_terms if t in text)
-        word_score   = sum(min(text.count(w), 3) * 1 for w in words)
+        t            = chunk["text"].lower()
+        phrase_score = sum(t.count(term) * 30 for term in answer_terms if term in t)
+        word_score   = sum(min(t.count(w), 3) for w in words)
         scored.append((phrase_score + word_score, chunk))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    best_index = scored[0][1]["index"]
 
     selected_indices = set()
-    selected_indices.add(best_index)
-    if best_index > 0:
-        selected_indices.add(best_index - 1)
-    if best_index < len(chunks) - 1:
-        selected_indices.add(best_index + 1)
-
-    # Always include top 3 chunks + their neighbours
     for i in range(min(3, len(scored))):
         idx = scored[i][1]["index"]
         selected_indices.add(idx)
@@ -161,6 +146,7 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=7000):
         key=lambda x: x["start"]
     )
     return "\n\n".join(c["text"] for c in selected)
+
 def ask_gemini(question, context, api_key):
     client = genai.Client(api_key=api_key)
     prompt = f"""You are a compliance expert answering questions about regulatory documents.
@@ -203,7 +189,6 @@ ANSWER:"""
 
     return "❌ AI service unavailable. Please try again later."
 
-# ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     try:
         db = load_database()
@@ -217,9 +202,9 @@ def main():
     st.caption("Ask questions about financial regulations")
 
     # Country
-    countries    = list(db.keys())
+    countries     = list(db.keys())
     country_names = [db[c]["name"] for c in countries]
-    selected_idx = st.selectbox(
+    selected_idx  = st.selectbox(
         "① Select Country",
         range(len(countries)),
         format_func=lambda x: country_names[x]
@@ -286,41 +271,14 @@ def main():
             for reg in relevant:
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
-                    st.write(f"Debug PDF: {len(content)} chars")
-
-                    # Show top 3 chunk scores
-                    import re as re2
-                    wrds = [w for w in re2.findall(r"[a-z0-9]+", question.lower()) if w not in STOP_WORDS and len(w) > 2]
-                    answer_terms_debug = ["prosecution","criminal sanction","prison term","fine","fails to comply","penalty","enforcement","censure"]
-                    chunks_d = []
-                    s = 0
-                    while s < len(content):
-                        chunks_d.append({"text": content[s:s+8000], "start": s, "index": len(chunks_d)})
-                        s += 7000
-                    scored_d = []
-                    for ch in chunks_d:
-                        t  = ch["text"].lower()
-                        ps = sum(t.count(term) * 30 for term in answer_terms_debug if term in t)
-                        ws = sum(min(t.count(w), 3) for w in wrds)
-                        scored_d.append((ps + ws, ch))
-                    scored_d.sort(key=lambda x: x[0], reverse=True)
-                    for rank, (sc, ch) in enumerate(scored_d[:5], 1):
-                        has_p = "prosecution" in ch["text"].lower()
-                        st.write(f"Rank {rank}: Score={sc} Start={ch['start']} has_prosecution={has_p}")
                 else:
                     content = scrape_page(reg["url"])
-                    
+
                 if content:
                     chunk = find_relevant_chunk(content, question)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
                     )
-
-        # Temporary debug - remove after testing
-        if context_parts:
-            st.write(f"Debug: {len(context_parts)} sources loaded")
-            st.write(f"Debug: total chars = {sum(len(c) for c in context_parts)}")
-            st.write(f"Debug: has prosecution = {'prosecution' in ' '.join(context_parts).lower()}")
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
