@@ -14,6 +14,8 @@ st.set_page_config(
 )
 
 st.markdown("""
+    .field-label {font-size: 14px; margin-bottom: 0.25rem;}
+    [data-testid="stForm"] {border: none; padding: 0;}
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -268,7 +270,7 @@ def main():
     col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
         st.markdown("#### 🏦 Regulatory Q&A Assistant")
-        st.markdown('<p class="subtitle">Ask questions about financial regulations</p>', unsafe_allow_html=True)
+        st.markdown('<p class="subtitle">Get answers from official regulatory documents</p>', unsafe_allow_html=True)
 
     # ── Country ───────────────────────────────────────────────────────────────
     # Define display order
@@ -319,7 +321,7 @@ def main():
         st.session_state["selected_field"]   = field_options[0]
         st.session_state["selected_country"] = selected_country
 
-    st.caption("Select Field")
+    st.markdown('<div class="field-label">Select Field</div>', unsafe_allow_html=True)
     cols = st.columns(len(field_options))
     for i, field in enumerate(field_options):
         with cols[i]:
@@ -337,22 +339,23 @@ def main():
     selected_field = st.session_state["selected_field"]
 
     # ── Question ──────────────────────────────────────────────────────────────
-    question = st.text_input(
-        "Your Question",
-        placeholder="e.g. What are the KYC requirements for high risk customers?"
-    )
+        with st.form("qa_form"):
+        question = st.text_input(
+            "Your Question",
+            placeholder="e.g. What are the KYC requirements for high risk customers?"
+        )
+        st.caption('💡 Include "detailed explanation" in your question for a fuller answer')
+        ask_clicked = st.form_submit_button(
+            "🔍 Get Answer",
+            type="primary",
+            use_container_width=True
+        )
 
-    st.caption('💡 Include "detailed explanation" in your question for a fuller answer')
-
-    ask_clicked = st.button(
-        "🔍 Get Answer",
-        type="primary",
-        use_container_width=True,
-        disabled=not question
-    )
+    if ask_clicked and not question.strip():
+        st.warning("Please type a question first.")
 
     # ── Answer ────────────────────────────────────────────────────────────────
-    if ask_clicked and question:
+    if ask_clicked and question.strip():
         detailed = any(w in question.lower() for w in [
             "detail", "detailed", "explain", "elaborate",
             "in depth", "thorough", "full", "complete"
