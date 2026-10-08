@@ -39,6 +39,26 @@ def scrape_page(url):
     except:
         return ""
 
+def read_pdf_from_url(url):
+    """Download and read PDF from GitHub"""
+    try:
+        import io
+        from pypdf import PdfReader
+
+        response = requests.get(url, timeout=30)
+        pdf_file = io.BytesIO(response.content)
+        reader   = PdfReader(pdf_file)
+
+        text = ""
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            if page_text.strip():
+                text += page_text + "\n"
+
+        return text
+    except:
+        return ""
+
 STOP_WORDS = set(
     "a an the of to in on for and or is are what who how "
     "when which do does be by with as at from that this it "
