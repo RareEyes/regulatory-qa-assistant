@@ -265,11 +265,10 @@ def main():
     api_key = st.secrets["GEMINI_API_KEY"]
 
     # Header - centered
-    st.title("🏦 Regulatory Q&A Assistant")
-    st.markdown(
-        '<p class="subtitle">Ask questions about financial regulations</p>',
-        unsafe_allow_html=True
-    )
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("### 🏦 Regulatory Q&A Assistant")
+        st.markdown('<p class="subtitle">Ask questions about financial regulations</p>', unsafe_allow_html=True)
 
     # ── Country ───────────────────────────────────────────────────────────────
     # Define display order
@@ -343,10 +342,7 @@ def main():
         placeholder="e.g. What are the KYC requirements for high risk customers?"
     )
 
-    st.markdown(
-        '<p class="hint">For detailed explanation, include "detailed explanation" in your question</p>',
-        unsafe_allow_html=True
-    )
+    st.caption('💡 Include "detailed explanation" in your question for a fuller answer')
 
     ask_clicked = st.button(
         "🔍 Get Answer",
@@ -407,11 +403,7 @@ def main():
         st.markdown("---")
         st.subheader("📋 Answer")
         st.markdown(answer)
-        st.markdown(
-            '<p class="disclaimer">⚠️ Please double check as AI might make mistakes. '
-            'This is for informational purposes only.</p>',
-            unsafe_allow_html=True
-        )
+        st.caption("⚠️ Please double check as AI might make mistakes. For informational purposes only.")
 
 if __name__ == "__main__":
     main()
