@@ -21,7 +21,7 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .block-container {padding-top: 2rem; padding-bottom: 1rem;}
     h1 {text-align: center; font-size: 1.8rem !important;}
-    .subtitle {text-align: center; color: grey; font-size: 0.9rem; margin-bottom: 1rem;}
+    .subtitle {text-align: center; color: grey; font-size: 0.8rem; margin-bottom: 1rem;}
     .disclaimer {font-size: 0.60rem; color: grey; margin-top: 0.5rem;}
     .hint {font-size: 0.30rem; color: #bbb; margin-top: -0.5rem; margin-bottom: 0.5rem;}
     </style>
