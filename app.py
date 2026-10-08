@@ -186,6 +186,11 @@ def find_relevant_chunk(content, question):
         if idx < len(chunks) - 1:
             selected_indices.add(idx + 1)
 
+    # For short documents (under 50K chars) always include all chunks
+    if len(content) < 50000:
+        for i in range(len(chunks)):
+            selected_indices.add(i)
+
     # Force include chunks with direct keyword hits
     direct_hits = [
         "imprisonment", "criminal offence", "civil penalty",
