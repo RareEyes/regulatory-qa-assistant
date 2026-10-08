@@ -287,8 +287,26 @@ def main():
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
                     st.write(f"Debug PDF: {len(content)} chars")
-                    pos = content.lower().find("prosecution")
-                    st.write(f"Debug: prosecution at position {pos}")
+
+                    # Show top 3 chunk scores
+                    import re as re2
+                    wrds = [w for w in re2.findall(r"[a-z0-9]+", question.lower()) if w not in STOP_WORDS and len(w) > 2]
+                    answer_terms_debug = ["prosecution","criminal sanction","prison term","fine","fails to comply","penalty","enforcement","censure"]
+                    chunks_d = []
+                    s = 0
+                    while s < len(content):
+                        chunks_d.append({"text": content[s:s+8000], "start": s, "index": len(chunks_d)})
+                        s += 7000
+                    scored_d = []
+                    for ch in chunks_d:
+                        t  = ch["text"].lower()
+                        ps = sum(t.count(term) * 30 for term in answer_terms_debug if term in t)
+                        ws = sum(min(t.count(w), 3) for w in wrds)
+                        scored_d.append((ps + ws, ch))
+                    scored_d.sort(key=lambda x: x[0], reverse=True)
+                    for rank, (sc, ch) in enumerate(scored_d[:5], 1):
+                        has_p = "prosecution" in ch["text"].lower()
+                        st.write(f"Rank {rank}: Score={sc} Start={ch['start']} has_prosecution={has_p}")
                 else:
                     content = scrape_page(reg["url"])
                     
