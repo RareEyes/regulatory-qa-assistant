@@ -20,6 +20,10 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .block-container {padding-top: 2rem; padding-bottom: 1rem;}
+    h1 {text-align: center; font-size: 1.8rem !important;}
+    .subtitle {text-align: center; color: grey; font-size: 0.9rem; margin-bottom: 1rem;}
+    .disclaimer {font-size: 0.75rem; color: grey; margin-top: 0.5rem;}
+    .hint {font-size: 0.72rem; color: #aaa; margin-top: -0.5rem; margin-bottom: 0.5rem;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -70,11 +74,8 @@ def score_regulation(question, title, url):
         return 0
 
     text  = (title + " " + url).lower()
-
-    # Basic word match score
     score = sum(1 for w in words if w in text)
 
-    # Bonus for exact phrase matches in title
     question_lower = question.lower()
     bonus_phrases  = [
         ("cdd", "customer due diligence"),
@@ -88,16 +89,13 @@ def score_regulation(question, title, url):
         ("audit", "audit"),
         ("compliance", "compliance"),
     ]
-
     for q_phrase, t_phrase in bonus_phrases:
         if q_phrase in question_lower and t_phrase in text:
             score += 5
 
     return score
 
-
 def find_relevant_urls(question, regulations, top=5):
-    # If small collection (5 or fewer) search all of them
     if len(regulations) <= 5:
         return regulations
 
@@ -149,18 +147,15 @@ def find_relevant_chunk(content, question):
         "fine", "enforcement", "censure",
         "failure to comply", "fails to comply",
         "civil penalty", "criminal offence", "imprisonment",
-        "penalty", "sanction",# Governance specific
+        "penalty", "sanction",
         "board of directors", "responsibilities of the board",
         "board composition", "senior management",
         "audit committee", "risk committee",
         "fit and proper", "corporate governance",
         "board must", "bank must", "banks must",
         "members of the board", "independent member",
-        # Licensing specific  
         "application for", "licence", "license",
         "central bank will", "must obtain",
-        "requirements for licensing",
-        # General regulatory
         "must have", "must ensure", "must establish",
         "must maintain", "must comply", "must include",
         "at least", "minimum", "maximum",
@@ -177,7 +172,6 @@ def find_relevant_chunk(content, question):
 
     selected_indices = set()
 
-    # Add top 3 scoring chunks + neighbours
     for i in range(min(3, len(scored))):
         idx = scored[i][1]["index"]
         selected_indices.add(idx)
@@ -186,12 +180,10 @@ def find_relevant_chunk(content, question):
         if idx < len(chunks) - 1:
             selected_indices.add(idx + 1)
 
-    # For short documents (under 50K chars) always include all chunks
     if len(content) < 50000:
         for i in range(len(chunks)):
             selected_indices.add(i)
 
-    # Force include chunks with direct keyword hits
     direct_hits = [
         "imprisonment", "criminal offence", "civil penalty",
         "on conviction", "summary conviction", "fine or to both",
@@ -214,20 +206,27 @@ def find_relevant_chunk(content, question):
     )
     return "\n\n".join(c["text"] for c in selected)
 
-def ask_gemini(question, context, api_key):
+def ask_gemini(question, context, api_key, detailed):
     client = genai.Client(api_key=api_key)
+
+    if detailed:
+        style = """- Give a DETAILED answer. Do not shorten or summarize.
+- Use document's own numbered or titled points as headings.
+- Under each heading copy the full explanation given."""
+    else:
+        style = """- Give a SHORT and DIRECT answer.
+- Maximum 5-6 bullet points covering key points only.
+- Do not list every sub-detail unless critical.
+- Be concise."""
+
     prompt = f"""You are a compliance expert answering questions about regulatory documents.
 
 STRICT RULES:
 - Use ONLY the text provided below.
 - If answer not present say: "This information is not found in the selected regulations."
 - Do NOT invent or guess anything.
-- Start with one direct answer sentence.
-- Then extract EVERY detail as separate bullet points.
-- Copy every quoted definition word for word.
-- Include every timeframe, amount and obligation exactly as stated.
-- Never skip any bullet point or sub point from the source text.
-- For obligation questions end with: "Check the full rule for exceptions."
+{style}
+- Copy exact definitions and timeframes word for word.
 - End with Sources listing regulation names used.
 
 REGULATION TEXT:
@@ -265,23 +264,52 @@ def main():
 
     api_key = st.secrets["GEMINI_API_KEY"]
 
+    # Header - centered
     st.title("🏦 Regulatory Q&A Assistant")
-    st.caption("Ask questions about financial regulations")
-
-    # Country
-    countries     = list(db.keys())
-    country_names = [db[c]["name"] for c in countries]
-    selected_idx  = st.selectbox(
-        "① Select Country",
-        range(len(countries)),
-        format_func=lambda x: country_names[x]
+    st.markdown(
+        '<p class="subtitle">Ask questions about financial regulations</p>',
+        unsafe_allow_html=True
     )
-    selected_country = countries[selected_idx]
+
+    # ── Country ───────────────────────────────────────────────────────────────
+    # Define display order
+    country_order  = ["India", "United Arab Emirates", "United Kingdom"]
+    all_countries  = list(db.keys())
+
+    # Map display names to db keys
+    name_to_key = {db[k]["name"]: k for k in all_countries}
+    key_to_name = {k: db[k]["name"] for k in all_countries}
+
+    # Build ordered list
+    ordered_keys   = []
+    ordered_names  = []
+    for display in country_order:
+        for k in all_countries:
+            if display.lower() in db[k]["name"].lower():
+                ordered_keys.append(k)
+                ordered_names.append(db[k]["name"])
+                break
+
+    # Add any remaining countries not in order list
+    for k in all_countries:
+        if k not in ordered_keys:
+            ordered_keys.append(k)
+            ordered_names.append(db[k]["name"])
+
+    selected_idx = st.selectbox(
+        "Select Country",
+        range(len(ordered_keys)),
+        format_func=lambda x: ordered_names[x],
+        label_visibility="visible"
+    )
+    selected_country = ordered_keys[selected_idx]
     country_data     = db[selected_country]
 
-    # Field - reset when country changes
+    # ── Field ─────────────────────────────────────────────────────────────────
     fields        = list(country_data["fields"].keys())
-    field_options = fields + ["All"]
+
+    # Only add "All" if more than one field
+    field_options = fields + ["All"] if len(fields) > 1 else fields
 
     if (
         "selected_field"   not in st.session_state or
@@ -292,7 +320,7 @@ def main():
         st.session_state["selected_field"]   = field_options[0]
         st.session_state["selected_country"] = selected_country
 
-    st.write("② Select Field")
+    st.write("Select Field")
     cols = st.columns(len(field_options))
     for i, field in enumerate(field_options):
         with cols[i]:
@@ -309,21 +337,34 @@ def main():
 
     selected_field = st.session_state["selected_field"]
 
-    # Question
+    # ── Question ──────────────────────────────────────────────────────────────
     question = st.text_input(
-        "③ Your Question",
+        "Your Question",
         placeholder="e.g. What are the KYC requirements for high risk customers?"
     )
 
-    ask_clicked = st.button(
-        "🔍 Get Answer",
-        type="primary",
-        use_container_width=True,
-        disabled=not question
+    st.markdown(
+        '<p class="hint">For detailed explanation, include "detailed explanation" in your question</p>',
+        unsafe_allow_html=True
     )
 
-    # Answer
+    # Show button as soon as user types
+    if question:
+        ask_clicked = st.button(
+            "🔍 Get Answer",
+            type="primary",
+            use_container_width=True
+        )
+    else:
+        ask_clicked = False
+
+    # ── Answer ────────────────────────────────────────────────────────────────
     if ask_clicked and question:
+        detailed = any(w in question.lower() for w in [
+            "detail", "detailed", "explain", "elaborate",
+            "in depth", "thorough", "full", "complete"
+        ])
+
         if selected_field == "All":
             regulations = []
             for field_regs in country_data["fields"].values():
@@ -333,29 +374,27 @@ def main():
 
         relevant = find_relevant_urls(question, regulations, top=5)
 
-        context_parts = []
         MAX_TOTAL_CHARS = 40000
+        context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
             total_chars = 0
             for reg in relevant:
                 if total_chars >= MAX_TOTAL_CHARS:
                     break
-
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
                 else:
                     content = scrape_page(reg["url"])
 
                 if content:
-                    chunk     = find_relevant_chunk(content, question)
-                    # Cap each source at 15,000 chars
-                    chunk     = chunk[:15000]
+                    chunk        = find_relevant_chunk(content, question)
+                    chunk        = chunk[:15000]
                     total_chars += len(chunk)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
                     )
-            
+
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
             return
@@ -364,12 +403,18 @@ def main():
             answer = ask_gemini(
                 question,
                 "\n\n".join(context_parts),
-                api_key
+                api_key,
+                detailed
             )
 
         st.markdown("---")
         st.subheader("📋 Answer")
         st.markdown(answer)
+        st.markdown(
+            '<p class="disclaimer">⚠️ Please double check as AI might make mistakes. '
+            'This is for informational purposes only.</p>',
+            unsafe_allow_html=True
+        )
 
 if __name__ == "__main__":
     main()
