@@ -23,7 +23,7 @@ st.markdown("""
     h1 {text-align: center; font-size: 1.8rem !important;}
     .subtitle {text-align: center; color: grey; font-size: 0.9rem; margin-bottom: 1rem;}
     .disclaimer {font-size: 0.75rem; color: grey; margin-top: 0.5rem;}
-    .hint {font-size: 0.72rem; color: #aaa; margin-top: -0.5rem; margin-bottom: 0.5rem;}
+    .hint {font-size: 0.62rem; color: #bbb; margin-top: -0.5rem; margin-bottom: 0.5rem;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -348,15 +348,12 @@ def main():
         unsafe_allow_html=True
     )
 
-    # Show button as soon as user types
-    if question:
-        ask_clicked = st.button(
-            "🔍 Get Answer",
-            type="primary",
-            use_container_width=True
-        )
-    else:
-        ask_clicked = False
+    ask_clicked = st.button(
+        "🔍 Get Answer",
+        type="primary",
+        use_container_width=True,
+        disabled=not question
+    )
 
     # ── Answer ────────────────────────────────────────────────────────────────
     if ask_clicked and question:
