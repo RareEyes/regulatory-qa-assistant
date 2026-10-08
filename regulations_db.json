@@ -624,5 +624,24 @@
         }
       ]
     }
+  },
+  "UK": {
+    "name": "UK - Joint Money Laundering Steering Group (JMLSG)",
+    "regulator": "JMLSG",
+    "rulebook": "https://www.jmlsg.org.uk",
+    "fields": {
+      "AML/CFT": [
+        {
+          "title": "JMLSG Guidance Part I - June 2023 (Updated Aug 2025)",
+          "url": "https://raw.githubusercontent.com/RareEyes/regulatory-qa-assistant/refs/heads/main/JMLSG-Guidance-Part-I_June-2023-updated-Aug-2025.pdf",
+          "type": "pdf"
+        },
+        {
+          "title": "JMLSG Guidance Part II - June 2023 (Updated Dec 2025)",
+          "url": "https://raw.githubusercontent.com/RareEyes/regulatory-qa-assistant/refs/heads/main/JMLSG-Guidance-Part-II_June-2023_updated-Dec-2025.pdf",
+          "type": "pdf"
+        }
+      ]
+    }
   }
 }
