@@ -149,7 +149,21 @@ def find_relevant_chunk(content, question):
         "fine", "enforcement", "censure",
         "failure to comply", "fails to comply",
         "civil penalty", "criminal offence", "imprisonment",
-        "penalty", "sanction",
+        "penalty", "sanction",# Governance specific
+        "board of directors", "responsibilities of the board",
+        "board composition", "senior management",
+        "audit committee", "risk committee",
+        "fit and proper", "corporate governance",
+        "board must", "bank must", "banks must",
+        "members of the board", "independent member",
+        # Licensing specific  
+        "application for", "licence", "license",
+        "central bank will", "must obtain",
+        "requirements for licensing",
+        # General regulatory
+        "must have", "must ensure", "must establish",
+        "must maintain", "must comply", "must include",
+        "at least", "minimum", "maximum",
     ]
 
     scored = []
