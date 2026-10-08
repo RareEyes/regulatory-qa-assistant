@@ -284,7 +284,6 @@ def main():
         context_parts = []
         with st.spinner("🔍 Searching regulations..."):
             for reg in relevant:
-                # Read PDF or scrape website
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
                 else:
@@ -295,6 +294,12 @@ def main():
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
                     )
+
+        # Temporary debug - remove after testing
+        if context_parts:
+            st.write(f"Debug: {len(context_parts)} sources loaded")
+            st.write(f"Debug: total chars = {sum(len(c) for c in context_parts)}")
+            st.write(f"Debug: has prosecution = {'prosecution' in ' '.join(context_parts).lower()}")
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
