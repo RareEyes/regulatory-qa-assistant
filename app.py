@@ -68,8 +68,33 @@ def score_regulation(question, title, url):
     ]
     if not words:
         return 0
+
     text  = (title + " " + url).lower()
-    return sum(1 for w in words if w in text)
+
+    # Basic word match score
+    score = sum(1 for w in words if w in text)
+
+    # Bonus for exact phrase matches in title
+    question_lower = question.lower()
+    bonus_phrases  = [
+        ("cdd", "customer due diligence"),
+        ("kyc", "know your customer"),
+        ("high risk", "high risk"),
+        ("governance", "governance"),
+        ("licensing", "licens"),
+        ("insurance", "insurance"),
+        ("aml", "anti-money laundering"),
+        ("fraud", "fraud"),
+        ("audit", "audit"),
+        ("compliance", "compliance"),
+    ]
+
+    for q_phrase, t_phrase in bonus_phrases:
+        if q_phrase in question_lower and t_phrase in text:
+            score += 5
+
+    return score
+
 
 def find_relevant_urls(question, regulations, top=5):
     # If small collection (5 or fewer) search all of them
