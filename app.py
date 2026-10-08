@@ -147,14 +147,14 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
     if best_index < len(chunks) - 1:
         selected_indices.add(best_index + 1)
 
-    if len(scored) > 1:
-        second_index = scored[1][1]["index"]
-        if abs(second_index - best_index) > 1:
-            selected_indices.add(second_index)
-            if second_index > 0:
-                selected_indices.add(second_index - 1)
-            if second_index < len(chunks) - 1:
-                selected_indices.add(second_index + 1)
+    # Always include top 3 chunks + their neighbours
+    for i in range(min(3, len(scored))):
+        idx = scored[i][1]["index"]
+        selected_indices.add(idx)
+        if idx > 0:
+            selected_indices.add(idx - 1)
+        if idx < len(chunks) - 1:
+            selected_indices.add(idx + 1)
 
     selected = sorted(
         [chunks[i] for i in selected_indices],
