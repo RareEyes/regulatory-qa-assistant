@@ -593,7 +593,7 @@
     }
   },
   "India": {
-    "name": "India - Reserve Bank (RBI)",
+    "name": "India",
     "regulator": "Reserve Bank of India",
     "rulebook": "https://rbi.org.in/Scripts/BS_ViewMasDirections.aspx",
     "fields": {
@@ -626,7 +626,7 @@
     }
   },
   "UK": {
-    "name": "UK - Joint Money Laundering Steering Group (JMLSG)",
+    "name": "United Kingdom",
     "regulator": "JMLSG",
     "rulebook": "https://www.jmlsg.org.uk",
     "fields": {
