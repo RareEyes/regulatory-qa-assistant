@@ -640,6 +640,11 @@
           "title": "JMLSG Guidance Part II - June 2023 (Updated Dec 2025)",
           "url": "https://raw.githubusercontent.com/RareEyes/regulatory-qa-assistant/refs/heads/main/JMLSG-Guidance-Part-II_June-2023_updated-Dec-2025.pdf",
           "type": "pdf"
+        },
+        {
+          "title": "UK Money Laundering Regulations 2017 (MLR 2017)",
+          "url": "https://www.legislation.gov.uk/uksi/2017/692/contents",
+          "type": "web"
         }
       ]
     }
