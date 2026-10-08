@@ -107,7 +107,7 @@ def find_relevant_urls(question, regulations, top=5):
         key=lambda x: x[0], reverse=True
     )
     top_regs = [r for s, r in scored[:top] if s > 0]
-    return top_regs if top_regs else [scored[0][1]]
+    return top_regs if top_regs else [r for s, r in scored[:8]]
 
 def find_relevant_chunk(content, question):
     chunk_size = 8000
@@ -167,7 +167,7 @@ def find_relevant_chunk(content, question):
     for chunk in chunks:
         t            = chunk["text"].lower()
         phrase_score = sum(t.count(term) * 30 for term in answer_terms if term in t)
-        word_score   = sum(min(t.count(w), 3) for w in words)
+        word_score   = sum(min(t.count(w), 5) * 100 for w in words)
         scored.append((phrase_score + word_score, chunk))
 
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -373,7 +373,9 @@ def main():
                 else:
                     content = scrape_page(reg["url"])
 
-                if content:
+                q_words = [w for w in re.findall(r"[a-z0-9]+", question.lower())
+                           if w not in STOP_WORDS and len(w) > 2]
+                if content and any(w in content.lower() for w in q_words):
                     chunk        = find_relevant_chunk(content, question)
                     chunk        = chunk[:15000]
                     total_chars += len(chunk)
