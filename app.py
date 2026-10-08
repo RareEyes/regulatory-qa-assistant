@@ -284,7 +284,12 @@ def main():
         context_parts = []
         with st.spinner("🔍 Searching regulations..."):
             for reg in relevant:
-                content = scrape_page(reg["url"])
+                # Read PDF or scrape website
+                if reg.get("type") == "pdf":
+                    content = read_pdf_from_url(reg["url"])
+                else:
+                    content = scrape_page(reg["url"])
+
                 if content:
                     chunk = find_relevant_chunk(content, question)
                     context_parts.append(
