@@ -137,6 +137,8 @@ def find_relevant_chunk(content, question):
     scored.sort(key=lambda x: x[0], reverse=True)
 
     selected_indices = set()
+
+    # Add top 3 scoring chunks + neighbours
     for i in range(min(3, len(scored))):
         idx = scored[i][1]["index"]
         selected_indices.add(idx)
@@ -144,6 +146,23 @@ def find_relevant_chunk(content, question):
             selected_indices.add(idx - 1)
         if idx < len(chunks) - 1:
             selected_indices.add(idx + 1)
+
+    # Force include chunks with direct keyword hits
+    direct_hits = [
+        "imprisonment", "criminal offence", "civil penalty",
+        "on conviction", "summary conviction", "fine or to both",
+        "prison term", "two years", "five years",
+        "periodic updation", "high-risk customers",
+        "freeze all funds", "confirmed match",
+    ]
+    for i, chunk in enumerate(chunks):
+        t = chunk["text"].lower()
+        if any(hit in t for hit in direct_hits):
+            selected_indices.add(i)
+            if i > 0:
+                selected_indices.add(i - 1)
+            if i < len(chunks) - 1:
+                selected_indices.add(i + 1)
 
     selected = sorted(
         [chunks[i] for i in selected_indices],
