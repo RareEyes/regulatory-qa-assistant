@@ -5,21 +5,29 @@ from google import genai
 import json
 import re
 
-# ── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Regulatory Q&A Assistant",
     page_icon="🏦",
     layout="centered"
 )
 
-# ── Load URL Database ─────────────────────────────────────────────────────────
+# ── Hide UI clutter ───────────────────────────────────────────────────────────
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stSidebar"] {display: none;}
+    .block-container {padding-top: 2rem; padding-bottom: 1rem;}
+    </style>
+""", unsafe_allow_html=True)
+
 @st.cache_data
 def load_database():
     url  = "https://raw.githubusercontent.com/RareEyes/regulatory-qa-assistant/refs/heads/main/regulations_db.json"
     resp = requests.get(url)
     return resp.json()
 
-# ── Scrape One Regulation Page ────────────────────────────────────────────────
 def scrape_page(url):
     try:
         headers  = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -27,12 +35,10 @@ def scrape_page(url):
         soup     = BeautifulSoup(response.text, "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "header"]):
             tag.decompose()
-        text = soup.get_text(separator="\n", strip=True)
-        return text
+        return soup.get_text(separator="\n", strip=True)
     except:
         return ""
 
-# ── Find Relevant Regulations ─────────────────────────────────────────────────
 STOP_WORDS = set(
     "a an the of to in on for and or is are what who how "
     "when which do does be by with as at from that this it "
@@ -49,27 +55,22 @@ def score_regulation(question, title, url):
     if not words:
         return 0
     text  = (title + " " + url).lower()
-    score = sum(1 for w in words if w in text)
-    return score
+    return sum(1 for w in words if w in text)
 
 def find_relevant_urls(question, regulations, top=5):
-    scored = []
-    for reg in regulations:
-        s = score_regulation(question, reg["title"], reg["url"])
-        scored.append((s, reg))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top_regs = [reg for s, reg in scored[:top] if s > 0]
-    if not top_regs:
-        top_regs = [scored[0][1]]
-    return top_regs
+    scored = sorted(
+        [(score_regulation(question, r["title"], r["url"]), r)
+         for r in regulations],
+        key=lambda x: x[0], reverse=True
+    )
+    top_regs = [r for s, r in scored[:top] if s > 0]
+    return top_regs if top_regs else [scored[0][1]]
 
-# ── Smart Chunking ────────────────────────────────────────────────────────────
 def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
     words = [
         w for w in re.findall(r"[a-z0-9]+", question.lower())
         if w not in STOP_WORDS and len(w) > 2
     ]
-
     if not words or not content:
         return content[:20000]
 
@@ -87,20 +88,11 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         return content[:20000]
 
     answer_terms = [
-        "means that you must",
-        "means within",
-        "immediately",
-        "must not",
-        "shall not",
-        "required to",
-        "obligation",
-        "you must",
-        "shall",
-        "within",
-        "days",
-        "hours",
-        "prohibited",
-        "penalty",
+        "means that you must", "means within", "immediately",
+        "must not", "shall not", "required to", "obligation",
+        "you must", "shall", "within", "days", "hours",
+        "prohibited", "penalty", "high risk", "enhanced due diligence",
+        "customer due diligence", "beneficial owner",
     ]
 
     scored = []
@@ -114,8 +106,7 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
 
     scored.sort(key=lambda x: x[0], reverse=True)
 
-    best_chunk = scored[0][1]
-    best_index = best_chunk["index"]
+    best_index = scored[0][1]["index"]
 
     selected_indices = set()
     selected_indices.add(best_index)
@@ -125,8 +116,7 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         selected_indices.add(best_index + 1)
 
     if len(scored) > 1:
-        second       = scored[1][1]
-        second_index = second["index"]
+        second_index = scored[1][1]["index"]
         if abs(second_index - best_index) > 1:
             selected_indices.add(second_index)
             if second_index > 0:
@@ -138,10 +128,8 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         [chunks[i] for i in selected_indices],
         key=lambda x: x["start"]
     )
-
     return "\n\n".join(c["text"] for c in selected)
 
-# ── Ask Gemini ────────────────────────────────────────────────────────────────
 def ask_gemini(question, context, api_key):
     client = genai.Client(api_key=api_key)
     prompt = f"""You are a compliance expert answering questions about regulatory documents.
@@ -152,7 +140,7 @@ STRICT RULES:
 - Do NOT invent or guess anything.
 - Start with one direct answer sentence.
 - Then extract EVERY detail as separate bullet points.
-- Copy every quoted definition word for word e.g. "without delay" means...
+- Copy every quoted definition word for word.
 - Include every timeframe, amount and obligation exactly as stated.
 - Never skip any bullet point or sub point from the source text.
 - For obligation questions end with: "Check the full rule for exceptions."
@@ -179,62 +167,39 @@ ANSWER:"""
                 model=model, contents=prompt
             )
             return response.text
-        except Exception as e:
-            if "429" in str(e) or "quota" in str(e).lower():
-                continue
+        except:
             continue
 
     return "❌ AI service unavailable. Please try again later."
 
-# ── Main App ──────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────────────
 def main():
-
-    # Hide Streamlit default UI
-    st.markdown("""
-        <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        [data-testid="stSidebar"] {display: none;}
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Header
-    st.title("🏦 Regulatory Q&A Assistant")
-    st.caption("Ask questions about financial regulations")
-    st.markdown("---")
-
-    # Load database
     try:
         db = load_database()
     except:
         st.error("Failed to load regulations database.")
         return
 
-    # API Key from secrets
     api_key = st.secrets["GEMINI_API_KEY"]
 
-    # ── Step 1: Country ───────────────────────────────────────────────────────
-    st.subheader("① Select Country")
-    countries     = list(db.keys())
+    st.title("🏦 Regulatory Q&A Assistant")
+    st.caption("Ask questions about financial regulations")
+
+    # Country
+    countries    = list(db.keys())
     country_names = [db[c]["name"] for c in countries]
-    selected_idx  = st.selectbox(
-        "Country",
+    selected_idx = st.selectbox(
+        "① Select Country",
         range(len(countries)),
-        format_func=lambda x: country_names[x],
-        label_visibility="collapsed"
+        format_func=lambda x: country_names[x]
     )
     selected_country = countries[selected_idx]
     country_data     = db[selected_country]
 
-    st.markdown("---")
-
-    # ── Step 2: Field ─────────────────────────────────────────────────────────
-    st.subheader("② Select Field")
+    # Field - reset when country changes
     fields        = list(country_data["fields"].keys())
     field_options = fields + ["All"]
 
-    # Reset field when country changes
     if (
         "selected_field"   not in st.session_state or
         "selected_country" not in st.session_state or
@@ -244,6 +209,7 @@ def main():
         st.session_state["selected_field"]   = field_options[0]
         st.session_state["selected_country"] = selected_country
 
+    st.write("② Select Field")
     cols = st.columns(len(field_options))
     for i, field in enumerate(field_options):
         with cols[i]:
@@ -260,15 +226,10 @@ def main():
 
     selected_field = st.session_state["selected_field"]
 
-    st.markdown("---")
-
-    # ── Step 3: Question ──────────────────────────────────────────────────────
-    st.subheader("③ Ask Your Question")
-
+    # Question
     question = st.text_input(
-        "Question",
-        placeholder="e.g. What are the KYC requirements for high risk customers?",
-        label_visibility="collapsed"
+        "③ Your Question",
+        placeholder="e.g. What are the KYC requirements for high risk customers?"
     )
 
     ask_clicked = st.button(
@@ -278,10 +239,8 @@ def main():
         disabled=not question
     )
 
-    # ── Process & Answer ──────────────────────────────────────────────────────
+    # Answer
     if ask_clicked and question:
-
-        # Get regulations for field
         if selected_field == "All":
             regulations = []
             for field_regs in country_data["fields"].values():
@@ -289,12 +248,10 @@ def main():
         else:
             regulations = country_data["fields"].get(selected_field, [])
 
-        # Find relevant
         relevant = find_relevant_urls(question, regulations, top=5)
 
-        # Scrape and chunk
         context_parts = []
-        with st.spinner("🔍 Searching regulations and preparing answer..."):
+        with st.spinner("🔍 Searching regulations..."):
             for reg in relevant:
                 content = scrape_page(reg["url"])
                 if content:
@@ -307,10 +264,12 @@ def main():
             st.error("Could not load regulation content. Please try again.")
             return
 
-        context = "\n\n".join(context_parts)
-
         with st.spinner("🤖 Analysing..."):
-            answer = ask_gemini(question, context, api_key)
+            answer = ask_gemini(
+                question,
+                "\n\n".join(context_parts),
+                api_key
+            )
 
         st.markdown("---")
         st.subheader("📋 Answer")
