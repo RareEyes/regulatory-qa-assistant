@@ -286,9 +286,12 @@ def main():
             for reg in relevant:
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
+                    st.write(f"Debug PDF: {len(content)} chars")
+                    pos = content.lower().find("prosecution")
+                    st.write(f"Debug: prosecution at position {pos}")
                 else:
                     content = scrape_page(reg["url"])
-
+                    
                 if content:
                     chunk = find_relevant_chunk(content, question)
                     context_parts.append(
