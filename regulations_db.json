@@ -591,5 +591,38 @@
         }
       ]
     }
+  },
+  "India": {
+    "name": "India - Reserve Bank (RBI)",
+    "regulator": "Reserve Bank of India",
+    "rulebook": "https://rbi.org.in/Scripts/BS_ViewMasDirections.aspx",
+    "fields": {
+      "AML/CFT": [
+        {
+          "title": "Master Direction - Know Your Customer (KYC) Direction, 2016",
+          "url": "https://rbi.org.in/scripts/notificationuser.aspx?id=11566"
+        }
+      ],
+      "Banking": [
+        {
+          "title": "RBI - Fraud Risk Management Directions",
+          "url": "https://rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13641"
+        },
+        {
+          "title": "RBI - Compliance Function Directions",
+          "url": "https://rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13645"
+        },
+        {
+          "title": "RBI - Internal Audit Function Directions",
+          "url": "https://rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13640"
+        }
+      ],
+      "Insurance": [
+        {
+          "title": "Master Direction - Insurance",
+          "url": "https://rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=10738"
+        }
+      ]
+    }
   }
 }
