@@ -71,6 +71,7 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         w for w in re.findall(r"[a-z0-9]+", question.lower())
         if w not in STOP_WORDS and len(w) > 2
     ]
+
     if not words or not content:
         return content[:20000]
 
@@ -93,19 +94,20 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         "you must", "shall", "within", "days", "hours",
         "prohibited", "penalty", "high risk", "enhanced due diligence",
         "customer due diligence", "beneficial owner",
+        "intensified monitoring", "periodic updation",
+        "risk-based", "two years", "eight years", "ten years",
+        "freeze", "confirmed match", "without delay",
+        "without prior notice", "freeze all funds",
     ]
 
     scored = []
     for chunk in chunks:
-        text  = chunk["text"].lower()
-        score = sum(text.count(w) for w in words)
-        for term in answer_terms:
-            if term in text:
-                score += 20
-        scored.append((score, chunk))
+        text         = chunk["text"].lower()
+        phrase_score = sum(text.count(t) * 15 for t in answer_terms if t in text)
+        word_score   = sum(min(text.count(w), 5) * 2 for w in words)
+        scored.append((phrase_score + word_score, chunk))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-
     best_index = scored[0][1]["index"]
 
     selected_indices = set()
@@ -129,7 +131,6 @@ def find_relevant_chunk(content, question, chunk_size=8000, overlap=1000):
         key=lambda x: x["start"]
     )
     return "\n\n".join(c["text"] for c in selected)
-
 def ask_gemini(question, context, api_key):
     client = genai.Client(api_key=api_key)
     prompt = f"""You are a compliance expert answering questions about regulatory documents.
