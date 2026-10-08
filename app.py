@@ -339,7 +339,7 @@ def main():
     selected_field = st.session_state["selected_field"]
 
     # ── Question ──────────────────────────────────────────────────────────────
-        with st.form("qa_form"):
+    with st.form("qa_form"):
         question = st.text_input(
             "Your Question",
             placeholder="e.g. What are the KYC requirements for high risk customers?"
