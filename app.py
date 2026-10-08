@@ -20,10 +20,10 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .block-container {padding-top: 2rem; padding-bottom: 1rem;}
-    h1 {text-align: center; font-size: 1.8rem !important;}
-    .subtitle {text-align: center; color: grey; font-size: 0.8rem; margin-bottom: 1rem;}
-    .disclaimer {font-size: 0.60rem; color: grey; margin-top: 0.5rem;}
-    .hint {font-size: 0.30rem; color: #bbb; margin-top: -0.5rem; margin-bottom: 0.5rem;}
+    h1 {text-align: center; font-size: 28px !important;}
+    .subtitle {text-align: center; color: grey; font-size: 13px; margin-bottom: 10px;}
+    .disclaimer {font-size: 11px; color: grey; margin-top: 8px;}
+    .hint {font-size: 10px; color: #bbb; margin-top: -8px; margin-bottom: 8px;}
     </style>
 """, unsafe_allow_html=True)
 
