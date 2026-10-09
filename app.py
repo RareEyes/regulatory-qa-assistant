@@ -348,7 +348,7 @@ def main():
 
     # ── Answer ────────────────────────────────────────────────────────────────
     if ask_clicked and question.strip():
-    detailed = any(w in question.lower() for w in [
+        detailed = any(w in question.lower() for w in [
         "detail", "detailed", "explain", "elaborate",
         "in depth", "thorough", "full", "complete",
         "all", "every", "list all", "what are all",
