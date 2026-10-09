@@ -214,19 +214,22 @@ def ask_gemini(question, context, api_key, detailed):
     if detailed:
         style = """- Give a DETAILED answer. Do not shorten or summarize.
 - Use document's own numbered or titled points as headings.
-- Under each heading copy the full explanation given."""
+- Under each heading copy the full explanation given.
+- Include ALL requirements, timeframes, conditions and exceptions."""
     else:
-        style = """- Give a SHORT and DIRECT answer.
-- Maximum 5-6 bullet points covering key points only.
-- Do not list every sub-detail unless critical.
-- Be concise."""
+        style = """- Give a COMPLETE and DIRECT answer covering ALL key points.
+- Use bullet points but do NOT skip any important requirements.
+- Include exact numbers, timeframes and conditions mentioned.
+- If there are many requirements list ALL of them.
+- Do not pad with unnecessary explanation but never omit requirements."""
 
     prompt = f"""You are a compliance expert answering questions about regulatory documents.
 
 STRICT RULES:
 - Use ONLY the text provided below.
-- If answer not present say: "This information is not found in the selected regulations."
+- If the answer is truly not present say: "This information is not found in the selected regulations."
 - Do NOT invent or guess anything.
+- NEVER say information is not found if it IS present in the text below.
 {style}
 - Copy exact definitions and timeframes word for word.
 - End with Sources listing regulation names used.
@@ -239,7 +242,6 @@ QUESTION: {question}
 ANSWER:"""
 
     models = [
-        "gemini-flash-lite-latest",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
         "gemini-1.5-flash",
@@ -256,7 +258,7 @@ ANSWER:"""
             continue
 
     return "❌ AI service unavailable. Please try again later."
-
+    
 def main():
     try:
         db = load_database()
@@ -346,10 +348,12 @@ def main():
 
     # ── Answer ────────────────────────────────────────────────────────────────
     if ask_clicked and question.strip():
-        detailed = any(w in question.lower() for w in [
-            "detail", "detailed", "explain", "elaborate",
-            "in depth", "thorough", "full", "complete"
-        ])
+    detailed = any(w in question.lower() for w in [
+        "detail", "detailed", "explain", "elaborate",
+        "in depth", "thorough", "full", "complete",
+        "all", "every", "list all", "what are all",
+        "comprehensive", "requirements", "steps"
+    ])
 
         if selected_field == "All":
             regulations = []
@@ -358,9 +362,9 @@ def main():
         else:
             regulations = country_data["fields"].get(selected_field, [])
 
-        relevant = find_relevant_urls(question, regulations, top=5)
+        relevant = find_relevant_urls(question, regulations, top=8)
 
-        MAX_TOTAL_CHARS = 40000
+        MAX_TOTAL_CHARS = 60000
         context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
@@ -375,7 +379,7 @@ def main():
 
                 if content:
                     chunk        = find_relevant_chunk(content, question)
-                    chunk        = chunk[:15000]
+                    chunk        = chunk[:20000]
                     total_chars += len(chunk)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
