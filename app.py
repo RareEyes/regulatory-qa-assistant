@@ -214,13 +214,12 @@ def ask_gemini(question, context, api_key, detailed):
     if detailed:
         style = """- Give a DETAILED answer. Do not shorten or summarize.
 - Use document's own numbered or titled points as headings.
-- Under each heading copy the full explanation given.
-- Copy exact definitions and timeframes word for word."""
+- Under each heading copy the full explanation given."""
     else:
-        style = """- Give a SHORT answer: maximum 3 to 4 bullet points, or 2 to 3 sentences.
-- Keep each bullet to one line.
-- Give only the direct answer. Leave out background, examples and sub-details.
-- Do not copy long passages from the document."""
+        style = """- Give a SHORT and DIRECT answer.
+- Maximum 5-6 bullet points covering key points only.
+- Do not list every sub-detail unless critical.
+- Be concise."""
 
     prompt = f"""You are a compliance expert answering questions about regulatory documents.
 
@@ -229,7 +228,8 @@ STRICT RULES:
 - If answer not present say: "This information is not found in the selected regulations."
 - Do NOT invent or guess anything.
 {style}
-- End with one short line: Source: <regulation name>.
+- Copy exact definitions and timeframes word for word.
+- End with Sources listing regulation names used.
 
 REGULATION TEXT:
 {context}
@@ -374,7 +374,7 @@ def main():
                     content = scrape_page(reg["url"])
 
                 q_words = [w for w in re.findall(r"[a-z0-9]+", question.lower())
-                            if w not in STOP_WORDS and len(w) > 2]
+                           if w not in STOP_WORDS and len(w) > 2]
                 if content and any(w in content.lower() for w in q_words):
                     chunk        = find_relevant_chunk(content, question)
                     chunk        = chunk[:15000]
