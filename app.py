@@ -388,9 +388,9 @@ def main():
                 st.write(f"📊 Content length: {len(content)} characters")
         
                 if content:
-                # Show first 500 chars of what was fetched
-                st.write("📝 Sample content:")
-                st.code(content[:500])
+                    # Show first 500 chars of what was fetched
+                    st.write("📝 Sample content:")
+                    st.code(content[:500])
             
                     chunk        = find_relevant_chunk(content, question)
                     chunk        = chunk[:15000]
