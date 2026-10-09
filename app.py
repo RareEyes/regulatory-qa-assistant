@@ -385,7 +385,7 @@ def main():
 
         if not context_parts:
                 st.warning("This information is not found in the selected regulations.")
-            return
+        return
 
         with st.spinner("🤖 Analysing..."):
             answer = ask_gemini(
