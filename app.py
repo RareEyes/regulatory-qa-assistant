@@ -107,7 +107,7 @@ def find_relevant_urls(question, regulations, top=5):
         key=lambda x: x[0], reverse=True
     )
     top_regs = [r for s, r in scored[:top] if s > 0]
-    return top_regs if top_regs else [r for s, r in scored[:15]]
+    return top_regs if top_regs else [r for s, r in scored[:10]]
 
 def find_relevant_chunk(content, question):
     chunk_size = 8000
@@ -229,7 +229,7 @@ STRICT RULES:
 - If answer not present say: "This information is not found in the selected regulations."
 - Do NOT invent or guess anything.
 {style}
-- End with one short line: Source: <regulation name>..
+- End with one short line: Source: <regulation name>.
 
 REGULATION TEXT:
 {context}
@@ -364,6 +364,11 @@ def main():
         MAX_TOTAL_CHARS = 40000
         context_parts   = []
 
+        q_words = [
+            w for w in re.findall(r"[a-z0-9]+", question.lower())
+            if w not in STOP_WORDS and len(w) > 2
+        ]
+
         with st.spinner("🔍 Searching regulations..."):
             total_chars = 0
             for reg in relevant:
@@ -374,8 +379,6 @@ def main():
                 else:
                     content = scrape_page(reg["url"])
 
-                q_words = [w for w in re.findall(r"[a-z0-9]+", question.lower())
-                           if w not in STOP_WORDS and len(w) > 2]
                 if content and any(w in content.lower() for w in q_words):
                     chunk        = find_relevant_chunk(content, question)
                     chunk        = chunk[:15000]
@@ -386,7 +389,7 @@ def main():
 
         if not context_parts:
             st.warning("This information is not found in the selected regulations.")
-        return
+            return
 
         with st.spinner("🤖 Analysing..."):
             answer = ask_gemini(
