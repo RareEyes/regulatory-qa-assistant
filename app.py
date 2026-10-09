@@ -107,7 +107,7 @@ def find_relevant_urls(question, regulations, top=5):
         key=lambda x: x[0], reverse=True
     )
     top_regs = [r for s, r in scored[:top] if s > 0]
-    return top_regs if top_regs else [r for s, r in scored[:8]]
+    return top_regs if top_regs else [r for s, r in scored]
 
 def find_relevant_chunk(content, question):
     chunk_size = 8000
@@ -384,7 +384,7 @@ def main():
                     )
 
         if not context_parts:
-            st.error("Could not load regulation content. Please try again.")
+                st.warning("This information is not found in the selected regulations.")
             return
 
         with st.spinner("🤖 Analysing..."):
