@@ -214,12 +214,13 @@ def ask_gemini(question, context, api_key, detailed):
     if detailed:
         style = """- Give a DETAILED answer. Do not shorten or summarize.
 - Use document's own numbered or titled points as headings.
-- Under each heading copy the full explanation given."""
+- Under each heading copy the full explanation given.
+- Copy exact definitions and timeframes word for word."""
     else:
-        style = """- Give a SHORT and DIRECT answer.
-- Maximum 5-6 bullet points covering key points only.
-- Do not list every sub-detail unless critical.
-- Be concise."""
+        style = """- Give a SHORT answer: maximum 3 to 4 bullet points, or 2 to 3 sentences.
+- Keep each bullet to one line.
+- Give only the direct answer. Leave out background, examples and sub-details.
+- Do not copy long passages from the document."""
 
     prompt = f"""You are a compliance expert answering questions about regulatory documents.
 
@@ -228,8 +229,7 @@ STRICT RULES:
 - If answer not present say: "This information is not found in the selected regulations."
 - Do NOT invent or guess anything.
 {style}
-- Copy exact definitions and timeframes word for word.
-- End with Sources listing regulation names used.
+- End with one short line: Source: <regulation name>..
 
 REGULATION TEXT:
 {context}
