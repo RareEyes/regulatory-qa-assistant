@@ -384,7 +384,7 @@ def main():
                     )
 
         if not context_parts:
-                st.warning("This information is not found in the selected regulations.")
+            st.warning("This information is not found in the selected regulations.")
         return
 
         with st.spinner("🤖 Analysing..."):
