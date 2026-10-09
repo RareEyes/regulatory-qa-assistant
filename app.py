@@ -370,23 +370,36 @@ def main():
         MAX_TOTAL_CHARS = 40000
         context_parts   = []
 
-        with st.spinner("🔍 Searching regulations..."):
-            total_chars = 0
-            for reg in relevant:
-                if total_chars >= MAX_TOTAL_CHARS:
-                    break
-                if reg.get("type") == "pdf":
-                    content = read_pdf_from_url(reg["url"])
-                else:
-                    content = scrape_page(reg["url"])
+    with st.spinner("🔍 Searching regulations..."):
+    total_chars = 0
+    for reg in relevant:
+        if total_chars >= MAX_TOTAL_CHARS:
+            break
+            
+        st.write(f"📄 Trying: {reg['title']}")
+        st.write(f"🔗 URL: {reg['url']}")
+        st.write(f"📁 Type: {reg.get('type', 'html')}")
+        
+        if reg.get("type") == "pdf":
+            content = read_pdf_from_url(reg["url"])
+        else:
+            content = scrape_page(reg["url"])
 
-                if content:
-                    chunk        = find_relevant_chunk(content, question)
-                    chunk        = chunk[:15000]
-                    total_chars += len(chunk)
-                    context_parts.append(
-                        f"[SOURCE: {reg['title']}]\n{chunk}"
-                    )
+        st.write(f"📊 Content length: {len(content)} characters")
+        
+        if content:
+            # Show first 500 chars of what was fetched
+            st.write("📝 Sample content:")
+            st.code(content[:500])
+            
+            chunk        = find_relevant_chunk(content, question)
+            chunk        = chunk[:15000]
+            total_chars += len(chunk)
+            context_parts.append(
+                f"[SOURCE: {reg['title']}]\n{chunk}"
+            )
+        else:
+            st.error(f"❌ No content fetched for: {reg['title']}")
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
