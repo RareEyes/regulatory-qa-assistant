@@ -107,7 +107,7 @@ def find_relevant_urls(question, regulations, top=5):
         key=lambda x: x[0], reverse=True
     )
     top_regs = [r for s, r in scored[:top] if s > 0]
-    return top_regs if top_regs else [r for s, r in scored]
+    return top_regs if top_regs else [r for s, r in scored[:15]]
 
 def find_relevant_chunk(content, question):
     chunk_size = 8000
@@ -251,7 +251,8 @@ ANSWER:"""
             response = client.models.generate_content(
                 model=model, contents=prompt
             )
-            return response.text
+            if response.text:
+                return response.text
         except:
             continue
 
