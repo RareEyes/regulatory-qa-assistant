@@ -398,8 +398,8 @@ def main():
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
                     )
-        else:
-            st.error(f"❌ No content fetched for: {reg['title']}")
+                else:
+                    st.error(f"❌ No content fetched for: {reg['title']}")
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
