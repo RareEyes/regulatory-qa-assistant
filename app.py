@@ -21,9 +21,11 @@ st.markdown("""
     [data-testid="stSidebar"] {display: none;}
     .block-container {padding-top: 2rem; padding-bottom: 1rem;}
     h1 {text-align: center; font-size: 28px !important;}
+    .title {text-align: center; font-size: 1.5rem; font-weight: 600; margin-bottom: 0;}
     .subtitle {text-align: center; color: grey; font-size: 13px; margin-bottom: 10px;}
     .disclaimer {font-size: 11px; color: grey; margin-top: 8px;}
     .hint {font-size: 10px; color: #bbb; margin-top: -8px; margin-bottom: 8px;}
+    .field-label {font-size: 14px; color: inherit; margin-bottom: 0.25rem;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -265,21 +267,13 @@ def main():
     api_key = st.secrets["GEMINI_API_KEY"]
 
     # Header - centered
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col2:
-        st.markdown("#### 🏦 Regulatory Q&A Assistant")
-        st.markdown('<p class="subtitle">Ask questions about financial regulations</p>', unsafe_allow_html=True)
+    st.markdown('<div class="title">🏦 Regulatory Q&A Assistant</div>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Get answers from official regulatory documents</p>', unsafe_allow_html=True)
 
     # ── Country ───────────────────────────────────────────────────────────────
-    # Define display order
     country_order  = ["India", "United Arab Emirates", "United Kingdom"]
     all_countries  = list(db.keys())
 
-    # Map display names to db keys
-    name_to_key = {db[k]["name"]: k for k in all_countries}
-    key_to_name = {k: db[k]["name"] for k in all_countries}
-
-    # Build ordered list
     ordered_keys   = []
     ordered_names  = []
     for display in country_order:
@@ -289,7 +283,6 @@ def main():
                 ordered_names.append(db[k]["name"])
                 break
 
-    # Add any remaining countries not in order list
     for k in all_countries:
         if k not in ordered_keys:
             ordered_keys.append(k)
@@ -306,8 +299,6 @@ def main():
 
     # ── Field ─────────────────────────────────────────────────────────────────
     fields        = list(country_data["fields"].keys())
-
-    # Only add "All" if more than one field
     field_options = fields + ["All"] if len(fields) > 1 else fields
 
     if (
@@ -319,7 +310,7 @@ def main():
         st.session_state["selected_field"]   = field_options[0]
         st.session_state["selected_country"] = selected_country
 
-    st.caption("Select Field")
+    st.markdown('<div class="field-label">Select Field</div>', unsafe_allow_html=True)
     cols = st.columns(len(field_options))
     for i, field in enumerate(field_options):
         with cols[i]:
@@ -347,12 +338,14 @@ def main():
     ask_clicked = st.button(
         "🔍 Get Answer",
         type="primary",
-        use_container_width=True,
-        disabled=not question
+        use_container_width=True
     )
 
+    if ask_clicked and not question.strip():
+        st.warning("Please type a question first.")
+
     # ── Answer ────────────────────────────────────────────────────────────────
-    if ask_clicked and question:
+    if ask_clicked and question.strip():
         detailed = any(w in question.lower() for w in [
             "detail", "detailed", "explain", "elaborate",
             "in depth", "thorough", "full", "complete"
@@ -375,31 +368,18 @@ def main():
             for reg in relevant:
                 if total_chars >= MAX_TOTAL_CHARS:
                     break
-            
-                st.write(f"📄 Trying: {reg['title']}")
-                st.write(f"🔗 URL: {reg['url']}")
-                st.write(f"📁 Type: {reg.get('type', 'html')}")
-        
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
                 else:
                     content = scrape_page(reg["url"])
 
-                st.write(f"📊 Content length: {len(content)} characters")
-        
                 if content:
-                    # Show first 500 chars of what was fetched
-                    st.write("📝 Sample content:")
-                    st.code(content[:500])
-            
                     chunk        = find_relevant_chunk(content, question)
                     chunk        = chunk[:15000]
                     total_chars += len(chunk)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
                     )
-                else:
-                    st.error(f"❌ No content fetched for: {reg['title']}")
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
