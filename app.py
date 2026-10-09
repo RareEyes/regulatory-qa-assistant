@@ -376,16 +376,16 @@ def main():
                 if total_chars >= MAX_TOTAL_CHARS:
                     break
             
-        st.write(f"📄 Trying: {reg['title']}")
-        st.write(f"🔗 URL: {reg['url']}")
-        st.write(f"📁 Type: {reg.get('type', 'html')}")
+                st.write(f"📄 Trying: {reg['title']}")
+                st.write(f"🔗 URL: {reg['url']}")
+                st.write(f"📁 Type: {reg.get('type', 'html')}")
         
                 if reg.get("type") == "pdf":
                     content = read_pdf_from_url(reg["url"])
                 else:
                     content = scrape_page(reg["url"])
 
-        st.write(f"📊 Content length: {len(content)} characters")
+                st.write(f"📊 Content length: {len(content)} characters")
         
                 if content:
                 # Show first 500 chars of what was fetched
