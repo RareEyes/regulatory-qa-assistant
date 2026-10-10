@@ -211,48 +211,28 @@ def find_relevant_chunk(content, question):
 def ask_groq(question, context, api_key, detailed):
     client = Groq(api_key=api_key)
 
-    if detailed:
-        style = """- Give a DETAILED answer. Do not shorten or summarize.
-- Use document's own numbered or titled points as headings.
-- Under each heading copy the full explanation given.
-- Include ALL requirements, timeframes, conditions and exceptions."""
-    else:
-        style = """- Give a COMPLETE and DIRECT answer covering ALL key points.
-- Use bullet points but do NOT skip any important requirements.
-- Include exact numbers, timeframes and conditions mentioned.
-- If there are many requirements list ALL of them.
-- Do not pad with unnecessary explanation but never omit requirements."""
+    # ... your prompt code ...
 
-    prompt = f"""You are a compliance expert answering questions about regulatory documents.
+    models = [
+        "openai/gpt-oss-120b",   # Try first (most powerful)
+        "qwen/qwen3.8-27b",      # Fallback if first fails
+        "openai/gpt-oss-20b",    # Last resort
+    ]
 
-STRICT RULES:
-- Use ONLY the text provided below.
-- If the answer is truly not present say: "This information is not found in the selected regulations."
-- Do NOT invent or guess anything.
-- NEVER say information is not found if it IS present in the text below.
-{style}
-- Copy exact definitions and timeframes word for word.
-- End with Sources listing regulation names used.
+    for model in models:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=4096
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            continue  # Try next model if this one fails
 
-REGULATION TEXT:
-{context}
-
-QUESTION:
-{question}
-
-ANSWER:"""
-
-    try:
-        response = client.chat.completions.create(
-            model="qwen/qwen3.8-27b",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=900  # ✅ Reduced from 4096 to 900
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"❌ AI service unavailable. Error: {str(e)}"
+    return "❌ AI service unavailable. Please try again later."
     
 def main():
     try:
@@ -359,7 +339,7 @@ def main():
 
         relevant = find_relevant_urls(question, regulations, top=8)
 
-        MAX_TOTAL_CHARS = 60000
+        MAX_TOTAL_CHARS = 15000  # ✅ Reduced for free tier
         context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
