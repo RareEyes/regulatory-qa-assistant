@@ -57,7 +57,33 @@ async def scrape_page_async(url):
             )
             await page.goto(url, timeout=60000, wait_until="networkidle")
             await page.wait_for_timeout(5000)
-            content = await page.inner_text("body")
+
+            # ✅ Remove navigation and unwanted elements first
+            await page.evaluate("""
+                const selectors = [
+                    'nav', 'header', 'footer',
+                    '.navigation', '.menu', '.sidebar',
+                    '.breadcrumb', '.nav', '.navbar',
+                    '[role="navigation"]', '[role="banner"]',
+                    '.skip-link', '.social-media'
+                ];
+                selectors.forEach(sel => {
+                    document.querySelectorAll(sel).forEach(el => el.remove());
+                });
+            """)
+
+            # ✅ Try to get main content area only
+            try:
+                content = await page.inner_text("main")
+            except:
+                try:
+                    content = await page.inner_text("article")
+                except:
+                    try:
+                        content = await page.inner_text(".content")
+                    except:
+                        content = await page.inner_text("body")
+
             await browser.close()
             return content
     except Exception as e:
@@ -137,8 +163,8 @@ def find_relevant_urls(question, regulations, top=5):
     return top_regs if top_regs else [scored[0][1]]
 
 def find_relevant_chunk(content, question):
-    chunk_size = 8000
-    step       = 7000
+    chunk_size = 10000
+    step       = 8000
 
     words = [
         w for w in re.findall(r"[a-z0-9]+", question.lower())
@@ -389,7 +415,7 @@ def main():
 
         relevant = find_relevant_urls(question, regulations, top=3)
 
-        MAX_TOTAL_CHARS = 15000
+        MAX_TOTAL_CHARS = 20000
         context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
@@ -404,7 +430,7 @@ def main():
 
                 if content:
                     chunk        = find_relevant_chunk(content, question)
-                    chunk        = chunk[:7000]
+                    chunk        = chunk[:8000]
                     total_chars += len(chunk)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
