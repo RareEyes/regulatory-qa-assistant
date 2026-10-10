@@ -1,5 +1,6 @@
+groq
 streamlit
 requests
 beautifulsoup4
-groq
 pypdf
+playwright
