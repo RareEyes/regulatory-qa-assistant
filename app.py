@@ -211,12 +211,40 @@ def find_relevant_chunk(content, question):
 def ask_groq(question, context, api_key, detailed):
     client = Groq(api_key=api_key)
 
-    # ... your prompt code ...
+    if detailed:
+        style = """- Give a DETAILED answer. Do not shorten or summarize.
+- Use document's own numbered or titled points as headings.
+- Under each heading copy the full explanation given.
+- Include ALL requirements, timeframes, conditions and exceptions."""
+    else:
+        style = """- Give a COMPLETE and DIRECT answer covering ALL key points.
+- Use bullet points but do NOT skip any important requirements.
+- Include exact numbers, timeframes and conditions mentioned.
+- If there are many requirements list ALL of them.
+- Do not pad with unnecessary explanation but never omit requirements."""
+
+    prompt = f"""You are a compliance expert answering questions about regulatory documents.
+
+STRICT RULES:
+- Use ONLY the text provided below.
+- If the answer is truly not present say: "This information is not found in the selected regulations."
+- Do NOT invent or guess anything.
+- NEVER say information is not found if it IS present in the text below.
+{style}
+- Copy exact definitions and timeframes word for word.
+- End with Sources listing regulation names used.
+
+REGULATION TEXT:
+{context}
+
+QUESTION:
+{question}
+
+ANSWER:"""
 
     models = [
-        "openai/gpt-oss-120b",   # Try first (most powerful)
-        "qwen/qwen3.8-27b",      # Fallback if first fails
-        "openai/gpt-oss-20b",    # Last resort
+        "openai/gpt-oss-120b",  # ✅ First choice (most powerful)
+        "qwen/qwen3.8-27b",     # ✅ Fallback
     ]
 
     for model in models:
@@ -230,7 +258,7 @@ def ask_groq(question, context, api_key, detailed):
             )
             return response.choices[0].message.content
         except Exception as e:
-            continue  # Try next model if this one fails
+            continue  # Try next model if this fails
 
     return "❌ AI service unavailable. Please try again later."
     
@@ -337,7 +365,7 @@ def main():
         else:
             regulations = country_data["fields"].get(selected_field, [])
 
-        relevant = find_relevant_urls(question, regulations, top=8)
+        relevant = find_relevant_urls(question, regulations, top=3)  # ✅ Keep reduced
 
         MAX_TOTAL_CHARS = 15000  # ✅ Reduced for free tier
         context_parts   = []
@@ -354,7 +382,7 @@ def main():
 
                 if content:
                     chunk        = find_relevant_chunk(content, question)
-                    chunk        = chunk[:20000]
+                    chunk        = chunk[:5000] # ✅ Keep reduced
                     total_chars += len(chunk)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
