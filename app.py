@@ -246,6 +246,7 @@ ANSWER:"""
         "qwen/qwen3.8-27b",
     ]
 
+    errors = []
     for model in models:
         try:
             response = client.chat.completions.create(
@@ -254,10 +255,11 @@ ANSWER:"""
                 max_tokens=4096
             )
             return response.choices[0].message.content
-        except:
+        except Exception as e:
+            errors.append(f"{model}: {str(e)}")
             continue
 
-    return "❌ AI service unavailable. Please try again later."
+    return f"❌ AI service unavailable. Errors: {' | '.join(errors)}"
 
 def main():
     try:
