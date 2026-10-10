@@ -1,5 +1,15 @@
+import streamlit as st
 import subprocess
 import sys
+import requests
+from bs4 import BeautifulSoup
+from groq import Groq
+import json
+import re
+import io
+from pypdf import PdfReader
+import asyncio
+from playwright.async_api import async_playwright
 
 # Install playwright browsers on startup
 @st.cache_resource
@@ -9,14 +19,6 @@ def install_playwright():
     return True
 
 install_playwright()
-import streamlit as st
-import requests
-from bs4 import BeautifulSoup
-from groq import Groq
-import json
-import re
-import io
-from pypdf import PdfReader
 
 st.set_page_config(
     page_title="Regulatory Q&A Assistant",
