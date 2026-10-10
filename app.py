@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-from google import genai
+from groq import Groq
 import json
 import re
 import io
@@ -208,8 +208,8 @@ def find_relevant_chunk(content, question):
     )
     return "\n\n".join(c["text"] for c in selected)
 
-def ask_gemini(question, context, api_key, detailed):
-    client = genai.Client(api_key=api_key)
+def ask_groq(question, context, api_key, detailed):
+    client = Groq(api_key=api_key)
 
     if detailed:
         style = """- Give a DETAILED answer. Do not shorten or summarize.
@@ -237,27 +237,22 @@ STRICT RULES:
 REGULATION TEXT:
 {context}
 
-QUESTION: {question}
+QUESTION:
+{question}
 
 ANSWER:"""
 
-    models = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-8b",
-    ]
-
-    for model in models:
-        try:
-            response = client.models.generate_content(
-                model=model, contents=prompt
-            )
-            return response.text
-        except:
-            continue
-
-    return "❌ AI service unavailable. Please try again later."
+    try:
+        response = client.chat.completions.create(
+            model="llama3-70b-8192",  # or "mixtral-8x7b-32768"
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=4096
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"❌ AI service unavailable. Error: {str(e)}"
     
 def main():
     try:
@@ -266,7 +261,7 @@ def main():
         st.error("Failed to load regulations database.")
         return
 
-    api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = st.secrets["GROQ_API_KEY"]
 
     # Header - centered
     st.markdown('<div class="title">🏦 Regulatory Q&A Assistant</div>', unsafe_allow_html=True)
@@ -390,7 +385,7 @@ def main():
             return
 
         with st.spinner("🤖 Analysing..."):
-            answer = ask_gemini(
+            answer = ask_groq(
                 question,
                 "\n\n".join(context_parts),
                 api_key,
