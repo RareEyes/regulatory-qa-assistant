@@ -2,7 +2,7 @@ import subprocess
 import sys
 
 # Install playwright browsers on startup
-@st.cache_resource
+    @st.cache_resource
 def install_playwright():
     subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"])
     subprocess.run([sys.executable, "-m", "playwright", "install-deps", "chromium"])
