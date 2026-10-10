@@ -48,9 +48,6 @@ def load_database():
     resp = requests.get(url)
     return resp.json()
 
-import asyncio
-from playwright.async_api import async_playwright
-
 async def scrape_page_async(url):
     try:
         async with async_playwright() as p:
@@ -68,8 +65,12 @@ async def scrape_page_async(url):
 
 def scrape_page(url):
     try:
-        return asyncio.get_event_loop().run_until_complete(scrape_page_async(url))
-    except:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(scrape_page_async(url))
+        loop.close()
+        return result
+    except Exception as e:
         return ""
 
 def read_pdf_from_url(url):
@@ -269,8 +270,8 @@ QUESTION:
 ANSWER:"""
 
     models = [
-        "openai/gpt-oss-120b",  # ✅ First choice (most powerful)
-        "qwen/qwen3.8-27b",     # ✅ Fallback
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.8-27b",
     ]
 
     for model in models:
@@ -284,10 +285,10 @@ ANSWER:"""
             )
             return response.choices[0].message.content
         except Exception as e:
-            continue  # Try next model if this fails
+            continue
 
     return "❌ AI service unavailable. Please try again later."
-    
+
 def main():
     try:
         db = load_database()
@@ -297,11 +298,9 @@ def main():
 
     api_key = st.secrets["GROQ_API_KEY"]
 
-    # Header - centered
     st.markdown('<div class="title">🏦 Regulatory Q&A Assistant</div>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Get answers from official regulatory documents</p>', unsafe_allow_html=True)
 
-    # ── Country ───────────────────────────────────────────────────────────────
     country_order  = ["India", "United Arab Emirates", "United Kingdom"]
     all_countries  = list(db.keys())
 
@@ -328,7 +327,6 @@ def main():
     selected_country = ordered_keys[selected_idx]
     country_data     = db[selected_country]
 
-    # ── Field ─────────────────────────────────────────────────────────────────
     fields        = list(country_data["fields"].keys())
     field_options = fields + ["All"] if len(fields) > 1 else fields
 
@@ -358,7 +356,6 @@ def main():
 
     selected_field = st.session_state["selected_field"]
 
-    # ── Question ──────────────────────────────────────────────────────────────
     question = st.text_input(
         "Your Question",
         placeholder="e.g. What are the KYC requirements for high risk customers?"
@@ -375,14 +372,13 @@ def main():
     if ask_clicked and not question.strip():
         st.warning("Please type a question first.")
 
-    # ── Answer ────────────────────────────────────────────────────────────────
     if ask_clicked and question.strip():
         detailed = any(w in question.lower() for w in [
-        "detail", "detailed", "explain", "elaborate",
-        "in depth", "thorough", "full", "complete",
-        "all", "every", "list all", "what are all",
-        "comprehensive", "requirements", "steps"
-    ])
+            "detail", "detailed", "explain", "elaborate",
+            "in depth", "thorough", "full", "complete",
+            "all", "every", "list all", "what are all",
+            "comprehensive", "requirements", "steps"
+        ])
 
         if selected_field == "All":
             regulations = []
@@ -391,30 +387,30 @@ def main():
         else:
             regulations = country_data["fields"].get(selected_field, [])
 
-        relevant = find_relevant_urls(question, regulations, top=3)  # ✅ Keep reduced
+        relevant = find_relevant_urls(question, regulations, top=3)
 
-        MAX_TOTAL_CHARS = 15000  # ✅ Reduced for free tier
+        MAX_TOTAL_CHARS = 15000
         context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
             total_chars = 0
-        for reg in relevant:
-            if total_chars >= MAX_TOTAL_CHARS:
-                break
-            if reg.get("type") == "pdf":
-                content = read_pdf_from_url(reg["url"])
-            else:
-                content = scrape_page(reg["url"])
+            for reg in relevant:
+                if total_chars >= MAX_TOTAL_CHARS:
+                    break
+                if reg.get("type") == "pdf":
+                    content = read_pdf_from_url(reg["url"])
+                else:
+                    content = scrape_page(reg["url"])
 
-        if content:
-            chunk        = find_relevant_chunk(content, question)
-            chunk        = chunk[:7000]
-            total_chars += len(chunk)
-            context_parts.append(
-                f"[SOURCE: {reg['title']}]\n{chunk}"
-            )
+                if content:
+                    chunk        = find_relevant_chunk(content, question)
+                    chunk        = chunk[:7000]
+                    total_chars += len(chunk)
+                    context_parts.append(
+                        f"[SOURCE: {reg['title']}]\n{chunk}"
+                    )
 
-        # ✅ Add these debug lines temporarily
+        # Debug lines - remove after testing
         st.write(f"**Sources found:** {len(context_parts)}")
         st.write(f"**Total chars:** {total_chars}")
         for i, part in enumerate(context_parts):
