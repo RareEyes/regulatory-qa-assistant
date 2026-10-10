@@ -35,14 +35,27 @@ def load_database():
     resp = requests.get(url)
     return resp.json()
 
+import asyncio
+from playwright.async_api import async_playwright
+
+async def scrape_page_async(url):
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            )
+            await page.goto(url, timeout=60000, wait_until="networkidle")
+            await page.wait_for_timeout(5000)
+            content = await page.inner_text("body")
+            await browser.close()
+            return content
+    except Exception as e:
+        return ""
+
 def scrape_page(url):
     try:
-        headers  = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        response = requests.get(url, headers=headers, timeout=15)
-        soup     = BeautifulSoup(response.text, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer", "header"]):
-            tag.decompose()
-        return soup.get_text(separator="\n", strip=True)
+        return asyncio.get_event_loop().run_until_complete(scrape_page_async(url))
     except:
         return ""
 
