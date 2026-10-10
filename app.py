@@ -397,22 +397,30 @@ def main():
         context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
-            total_chars = 0
-            for reg in relevant:
-                if total_chars >= MAX_TOTAL_CHARS:
-                    break
-                if reg.get("type") == "pdf":
-                    content = read_pdf_from_url(reg["url"])
-                else:
-                    content = scrape_page(reg["url"])
+    total_chars = 0
+    for reg in relevant:
+        if total_chars >= MAX_TOTAL_CHARS:
+            break
+        if reg.get("type") == "pdf":
+            content = read_pdf_from_url(reg["url"])
+        else:
+            content = scrape_page(reg["url"])
 
-                if content:
-                    chunk        = find_relevant_chunk(content, question)
-                    chunk        = chunk[:5000] # ✅ Keep reduced
-                    total_chars += len(chunk)
-                    context_parts.append(
-                        f"[SOURCE: {reg['title']}]\n{chunk}"
-                    )
+        if content:
+            chunk        = find_relevant_chunk(content, question)
+            chunk        = chunk[:7000]
+            total_chars += len(chunk)
+            context_parts.append(
+                f"[SOURCE: {reg['title']}]\n{chunk}"
+            )
+
+# ✅ Add these debug lines temporarily
+st.write(f"**Sources found:** {len(context_parts)}")
+st.write(f"**Total chars:** {total_chars}")
+for i, part in enumerate(context_parts):
+    st.write(f"**Source {i+1} preview:**")
+    st.write(part[:300])
+    st.write("---")
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
