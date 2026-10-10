@@ -414,13 +414,13 @@ def main():
                 f"[SOURCE: {reg['title']}]\n{chunk}"
             )
 
-# ✅ Add these debug lines temporarily
-st.write(f"**Sources found:** {len(context_parts)}")
-st.write(f"**Total chars:** {total_chars}")
-for i, part in enumerate(context_parts):
-    st.write(f"**Source {i+1} preview:**")
-    st.write(part[:300])
-    st.write("---")
+        # ✅ Add these debug lines temporarily
+        st.write(f"**Sources found:** {len(context_parts)}")
+        st.write(f"**Total chars:** {total_chars}")
+        for i, part in enumerate(context_parts):
+        st.write(f"**Source {i+1} preview:**")
+        st.write(part[:300])
+        st.write("---")
 
         if not context_parts:
             st.error("Could not load regulation content. Please try again.")
