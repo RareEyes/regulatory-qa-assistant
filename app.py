@@ -397,8 +397,8 @@ def main():
         context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
-    total_chars = 0
-    for reg in relevant:
+            total_chars = 0
+        for reg in relevant:
         if total_chars >= MAX_TOTAL_CHARS:
             break
         if reg.get("type") == "pdf":
