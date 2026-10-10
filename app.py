@@ -1,22 +1,10 @@
 import streamlit as st
-import subprocess
-import sys
 import requests
+from bs4 import BeautifulSoup
 from groq import Groq
 import re
 import io
 from pypdf import PdfReader
-import asyncio
-from playwright.async_api import async_playwright
-
-# Install playwright browsers on startup
-@st.cache_resource
-def install_playwright():
-    subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"])
-    subprocess.run([sys.executable, "-m", "playwright", "install-deps", "chromium"])
-    return True
-
-install_playwright()
 
 st.set_page_config(
     page_title="Regulatory Q&A Assistant",
@@ -46,53 +34,15 @@ def load_database():
     resp = requests.get(url)
     return resp.json()
 
-async def scrape_page_async(url):
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-            await page.goto(url, timeout=60000, wait_until="networkidle")
-            await page.wait_for_timeout(5000)
-
-            # Remove navigation and unwanted elements
-            await page.evaluate("""
-                const selectors = [
-                    'nav', 'header', 'footer',
-                    '.navigation', '.menu', '.sidebar',
-                    '.breadcrumb', '.nav', '.navbar',
-                    '[role="navigation"]', '[role="banner"]',
-                    '.skip-link', '.social-media'
-                ];
-                selectors.forEach(sel => {
-                    document.querySelectorAll(sel).forEach(el => el.remove());
-                });
-            """)
-
-            # Try to get main content area only
-            content = ""
-            for selector in ["main", "article", ".content", ".rulebook-content", "#content", "body"]:
-                try:
-                    content = await page.inner_text(selector)
-                    if content and len(content) > 500:
-                        break
-                except:
-                    continue
-
-            await browser.close()
-            return content
-    except Exception as e:
-        return ""
-
 def scrape_page(url):
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(scrape_page_async(url))
-        loop.close()
-        return result
-    except Exception as e:
+        headers  = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.get(url, headers=headers, timeout=15)
+        soup     = BeautifulSoup(response.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "header"]):
+            tag.decompose()
+        return soup.get_text(separator="\n", strip=True)
+    except:
         return ""
 
 def read_pdf_from_url(url):
@@ -159,8 +109,8 @@ def find_relevant_urls(question, regulations, top=5):
     return top_regs if top_regs else [scored[0][1]]
 
 def find_relevant_chunk(content, question):
-    chunk_size = 10000
-    step       = 8000
+    chunk_size = 8000
+    step       = 7000
 
     words = [
         w for w in re.findall(r"[a-z0-9]+", question.lower())
@@ -257,7 +207,7 @@ def find_relevant_chunk(content, question):
     )
     return "\n\n".join(c["text"] for c in selected)
 
-def ask_groq(question, context, api_key, detailed):
+def ask_gemini(question, context, api_key, detailed):
     client = Groq(api_key=api_key)
 
     if detailed:
@@ -300,13 +250,11 @@ ANSWER:"""
         try:
             response = client.chat.completions.create(
                 model=model,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
+                messages=[{"role": "user", "content": prompt}],
                 max_tokens=4096
             )
             return response.choices[0].message.content
-        except Exception as e:
+        except:
             continue
 
     return "❌ AI service unavailable. Please try again later."
@@ -409,9 +357,9 @@ def main():
         else:
             regulations = country_data["fields"].get(selected_field, [])
 
-        relevant = find_relevant_urls(question, regulations, top=3)
+        relevant = find_relevant_urls(question, regulations, top=8)
 
-        MAX_TOTAL_CHARS = 20000
+        MAX_TOTAL_CHARS = 60000
         context_parts   = []
 
         with st.spinner("🔍 Searching regulations..."):
@@ -426,7 +374,7 @@ def main():
 
                 if content:
                     chunk        = find_relevant_chunk(content, question)
-                    chunk        = chunk[:8000]
+                    chunk        = chunk[:20000]
                     total_chars += len(chunk)
                     context_parts.append(
                         f"[SOURCE: {reg['title']}]\n{chunk}"
@@ -437,7 +385,7 @@ def main():
             return
 
         with st.spinner("🤖 Analysing..."):
-            answer = ask_groq(
+            answer = ask_gemini(
                 question,
                 "\n\n".join(context_parts),
                 api_key,
