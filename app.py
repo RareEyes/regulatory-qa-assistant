@@ -403,8 +403,8 @@ def main():
                 break
             if reg.get("type") == "pdf":
                 content = read_pdf_from_url(reg["url"])
-                else:
-            content = scrape_page(reg["url"])
+            else:
+                content = scrape_page(reg["url"])
 
         if content:
             chunk        = find_relevant_chunk(content, question)
