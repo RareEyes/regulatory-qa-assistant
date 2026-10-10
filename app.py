@@ -244,7 +244,7 @@ ANSWER:"""
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # or "mixtral-8x7b-32768"
+            model="qwen/qwen3.8-27b",  # ✅ Confirmed working!
             messages=[
                 {"role": "user", "content": prompt}
             ],
