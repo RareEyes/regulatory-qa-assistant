@@ -244,11 +244,11 @@ ANSWER:"""
 
     try:
         response = client.chat.completions.create(
-            model="qwen/qwen3.8-27b",  # ✅ Confirmed working!
+            model="qwen/qwen3.8-27b",
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=4096
+            max_tokens=900  # ✅ Reduced from 4096 to 900
         )
         return response.choices[0].message.content
     except Exception as e:
