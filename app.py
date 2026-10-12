@@ -207,22 +207,24 @@ def find_relevant_chunk(content, question):
     )
     return "\n\n".join(c["text"] for c in selected)
 
-def ask_gemini(question, context, api_key, detailed):
-    client = Groq(api_key=api_key)
+def ask_groq(question, context, api_key, detailed):
+    """Use Groq to answer questions based on regulatory context"""
+    try:
+        client = Groq(api_key=api_key)
 
-    if detailed:
-        style = """- Give a DETAILED answer. Do not shorten or summarize.
+        if detailed:
+            style = """- Give a DETAILED answer. Do not shorten or summarize.
 - Use document's own numbered or titled points as headings.
 - Under each heading copy the full explanation given.
 - Include ALL requirements, timeframes, conditions and exceptions."""
-    else:
-        style = """- Give a COMPLETE and DIRECT answer covering ALL key points.
+        else:
+            style = """- Give a COMPLETE and DIRECT answer covering ALL key points.
 - Use bullet points but do NOT skip any important requirements.
 - Include exact numbers, timeframes and conditions mentioned.
 - If there are many requirements list ALL of them.
 - Do not pad with unnecessary explanation but never omit requirements."""
 
-    prompt = f"""You are a compliance expert answering questions about regulatory documents.
+        prompt = f"""You are a compliance expert answering questions about regulatory documents.
 
 STRICT RULES:
 - Use ONLY the text provided below.
@@ -241,34 +243,41 @@ QUESTION:
 
 ANSWER:"""
 
-    models = [
-        "openai/gpt-oss-120b",
-        "qwen/qwen3.8-27b",
-    ]
-
-    errors = []
-    for model in models:
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=4096
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            errors.append(f"{model}: {str(e)}")
-            continue
-
-    return f"❌ AI service unavailable. Errors: {' | '.join(errors)}"
+        response = client.messages.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2048,
+            temperature=0.2
+        )
+        return response.content[0].text
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
 
 def main():
     try:
         db = load_database()
-    except:
-        st.error("Failed to load regulations database.")
+    except Exception as e:
+        st.error(f"Failed to load regulations database: {str(e)}")
         return
 
-    api_key = st.secrets["GROQ_API_KEY"]
+    # Get API key safely
+    api_key = None
+    try:
+        api_key = st.secrets.get("GROQ_API_KEY")
+    except:
+        pass
+
+    if not api_key:
+        api_key = st.text_input(
+            "Enter Groq API Key",
+            type="password",
+            placeholder="gsk_xxxxxx"
+        )
+
+    if not api_key:
+        st.error("❌ Groq API Key required")
+        st.info("Get free key: https://console.groq.com")
+        return
 
     st.markdown('<div class="title">🏦 Regulatory Q&A Assistant</div>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Get answers from official regulatory documents</p>', unsafe_allow_html=True)
@@ -343,6 +352,7 @@ def main():
 
     if ask_clicked and not question.strip():
         st.warning("Please type a question first.")
+        return
 
     if ask_clicked and question.strip():
         detailed = any(w in question.lower() for w in [
@@ -387,7 +397,7 @@ def main():
             return
 
         with st.spinner("🤖 Analysing..."):
-            answer = ask_gemini(
+            answer = ask_groq(
                 question,
                 "\n\n".join(context_parts),
                 api_key,
